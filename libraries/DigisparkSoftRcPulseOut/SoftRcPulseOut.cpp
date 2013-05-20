@@ -78,8 +78,8 @@ void SoftRcPulseOut::write(int angleArg)
     // bleh, have to use longs to prevent overflow, could be tricky if always a 16MHz clock, but not true
     // That 64L on the end is the TCNT0 prescaler, it will need to change if the clock's prescaler changes,
     // but then there will likely be an overflow problem, so it will have to be handled by a human.
-#ifdef TIMER0_TICK_EVERY_X_CYCLES
-    pulse0 = (min16*16L*clockCyclesPerMicrosecond() + (max16-min16)*(16L*clockCyclesPerMicrosecond())*angle/180L)/TIMER0_TICK_EVERY_X_CYCLES;
+#ifdef MS_TIMER_TICK_EVERY_X_CYCLES
+    pulse0 = (min16*16L*clockCyclesPerMicrosecond() + (max16-min16)*(16L*clockCyclesPerMicrosecond())*angle/180L)/MS_TIMER_TICK_EVERY_X_CYCLES;
 #else
     pulse0 = (min16*16L*clockCyclesPerMicrosecond() + (max16-min16)*(16L*clockCyclesPerMicrosecond())*angle/180L)/64L;
 #endif
@@ -174,8 +174,11 @@ uint8_t SoftRcPulseOut::refresh(bool force /* = false */)
     for ( i = 0; i < count; i++)
 	{
 		uint16_t go = start + s[i]->pulse0;
-		uint16_t it = go - 4; /* 4 Ticks is OK for UNO @ 16MHz */ /* Mask Interruptions just before setting down the pin */
-
+#ifndef MS_TIMER_TICK_EVERY_X_CYCLES
+		uint16_t it = go - 4; /* 4 Ticks is OK for UNO @ 16MHz with default prescaler*/ /* Mask Interruptions just before setting down the pin */
+#else
+		uint16_t it = go - max(4, (256/MS_TIMER_TICK_EVERY_X_CYCLES)); /* 4 Ticks is OK for UNO @ 16MHz */ /* Mask Interruptions just before setting down the pin */
+#endif
 		// loop until we reach or pass 'go' time
 		for (;;)
 		{
