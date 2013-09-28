@@ -20,12 +20,12 @@
 /* Define here the PIN to use with Tiny Soft PWM */
 /*       Unused Pin(s) SHALL be commented        */
 /*************************************************/
-//#define TINY_SOFT_PWM_USES_P0
+#define TINY_SOFT_PWM_USES_P0
 #define TINY_SOFT_PWM_USES_P1
 #define TINY_SOFT_PWM_USES_P2
 //#define TINY_SOFT_PWM_USES_P3 /* /!\ used for USB on DigiSpark: do not use it for PWM if DigiUSB is also used /!\ */
 //#define TINY_SOFT_PWM_USES_P4 /* /!\ used for USB on DigiSpark: do not use it for PWM if DigiUSB is also used /!\ */
-#define TINY_SOFT_PWM_USES_P5
+//#define TINY_SOFT_PWM_USES_P5
 
 
 

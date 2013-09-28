@@ -22,6 +22,8 @@ RcSeq_DeclareManche	KEYWORD2
 RcSeq_DeclareServo	KEYWORD2
 RcSeq_DeclareCustomKeyboard	KEYWORD2
 RcSeq_DeclareClavierMaison	KEYWORD2
+RcSeq_DeclareMultiPosSwitch	KEYWORD2
+RcSeq_DeclareInterMultiPos	KEYWORD2
 RcSeq_DeclareCommandAndSequence	KEYWORD2
 RcSeq_DeclareCommandeEtSequence	KEYWORD2
 RcSeq_DeclareCommandAndShortAction	KEYWORD2

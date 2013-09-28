@@ -1,12 +1,15 @@
 #include <RcSeq.h>
 #include <TinyPinChange.h>
 #include <SoftRcPulseIn.h>
-#include <SoftRcPulseOut.h>
 
 /*
+IMPORTANT:
+For this sketch to compile, RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT and RC_SEQ_WITH_SHORT_ACTION_SUPPORT shall be defined
+in PathOfTheLibraries/(Digispark)RcSeq/RcSeq.h and RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT shall be commented.
+
 This sketch demonstrates how to easily transform a proportionnal RC channel into 5 digital commands with an ATtiny85.
 RC Navy (2013)
-http://P.loussouarn.free.fr
+http://p.loussouarn.free.fr
 
 COMMMAND OF 5 digital outputs from 5 push button replacing a potentiometer in the RC transmitter:
 ================================================================================================
@@ -87,12 +90,21 @@ KeyMap_t CustomKeyboard[] PROGMEM ={ {CENTER_VALUE_US(1100,TOLERANCE)}, /* PUSH_
 
 //==============================================================================================
 /* Trick: a macro to write a single time the ToggleAction#() function */
-#define DECLARE_TOGGLE_ACTION(Idx) \
-void ToggleAction##Idx(void)       \
-{                                  \
-static boolean Etat=HIGH;          \
-    digitalWrite(Idx, Etat);       \
-    Etat=!Etat;                    \
+#define DECLARE_TOGGLE_ACTION(Idx)                \
+void ToggleAction##Idx(void)                      \
+{                                                 \
+static uint32_t StartMs=millis();                 \
+static boolean Etat=HIGH;                         \
+                                                  \
+/* Since version 2.0 of the <RcSeq> library,   */ \
+/* for reactivity reasons, inter-command delay */ \
+/* shall be managed in the user sketch.        */ \
+  if(millis() - StartMs >= 500UL)                 \
+  {                                               \
+    StartMs=millis();                             \
+    digitalWrite(Idx, Etat);                      \
+    Etat=!Etat;                                   \
+  }                                               \
 }
 
 /* Declaration of the actions using the DECLARE_TOGGLE_ACTION(Idx) macro with Idx = The number of the action and the pin number (The ##Idx will be automatically replaced with the Idx value */

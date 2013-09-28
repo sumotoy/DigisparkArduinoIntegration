@@ -1,4 +1,16 @@
+#include <RcSeq.h>
+#include <TinyPinChange.h>  /* Ne pas oublier d'inclure la librairie <TinyPinChange>  qui est utilisee par la librairie <RcSeq> */
+#include <SoftRcPulseIn.h>  /* Ne pas oublier d'inclure la librairie <SoftRcPulseIn>  qui est utilisee par la librairie <RcSeq> */
+#include <SoftRcPulseOut.h> /* Ne pas oublier d'inclure la librairie <SoftRcPulseOut> qui est utilisee par la librairie <RcSeq> */
+
 /*
+IMPORTANT:
+Pour compiler ce sketch, RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT, RC_SEQ_WITH_SHORT_ACTION_SUPPORT et RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
+doivent etre definis dans ChemainDesLibraires/(Digispark)RcSeq/RcSeq.h.
+
+RC Navy 2013
+http://p.loussouarn.free.fr
+
 Ce sketch de demo de la librairie RcSeq montre comment configurer tres facilement la commande d'actions ou de sequences de servo predefinies.
 La commande peut etre:
 - un manche de l'emetteur RC avec possibilité de definir jusqu'a 8 positions "actives" (le nombre de position doit etre pair: neutre au milieu)
@@ -8,10 +20,6 @@ La commande peut etre:
   (la largeur d'impulsion pour chaque bouton-poussoir est define dans une table, une tolerance est egalement prevue)
 Les 3 exemples sont traites dans ce sketch de demo.
 */
-#include <RcSeq.h>
-#include <TinyPinChange.h>  /* Ne pas oublier d'inclure la librairie <TinyPinChange>  qui est utilisee par la librairie <RcSeq> */
-#include <SoftRcPulseIn.h>  /* Ne pas oublier d'inclure la librairie <SoftRcPulseIn>  qui est utilisee par la librairie <RcSeq> */
-#include <SoftRcPulseOut.h> /* Ne pas oublier d'inclure la librairie <SoftRcPulseOut> qui est utilisee par la librairie <RcSeq> */
 
 enum {RC_VOIE1, RC_VOIE2, RC_VOIE3, NBR_VOIES_RC}; /* Declaration des voies */
 
@@ -134,7 +142,13 @@ void loop()
 /* Action associee au BP1 de la VOIE1 ou au manche position basse de la VOIE2 ou au BP_MAISON1 de la VOIE3 */
 void InverseLed(void)
 {
-static boolean Etat=HIGH; /* static, pour conserver l'etat entre 2 appels de la fonction */
+static uint32_t DebutMs=millis(); /* static, pour conserver l'etat entre 2 appels de la fonction */
+static boolean Etat=HIGH;         /* static, pour conserver l'etat entre 2 appels de la fonction */
+
+  if(millis() - DebutMs >= 500UL) /* Depuis RcSeq V2.0, la tempo inter-commande doit etre geree dans le sketch utilisateur */
+  {
+    DebutMs=millis();
     digitalWrite(LED, Etat);
-    Etat=!Etat; /* AU prochain appel de InverseLed(), l'etat de la LED sera inverse */
+    Etat=!Etat; /* Au prochain appel de InverseLed(), l'etat de la LED sera inverse */
+  }
 }

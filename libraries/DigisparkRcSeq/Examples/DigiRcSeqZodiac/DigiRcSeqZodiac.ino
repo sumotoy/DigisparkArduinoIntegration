@@ -19,6 +19,7 @@ IMPORTANT:
 For this sketch, which is using <DigiUSB> library:
 1) Comment "#define RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT" in "arduino-1.xx\libraries\RcSeq.h".
    This will disable the code to manage incoming RC pulses and save some flash memory.
+   RC_SEQ_WITH_SHORT_ACTION_SUPPORT and RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT shall be defined
 2) Replace #define RING_BUFFER_SIZE 128 with #define RING_BUFFER_SIZE 32 in "arduino-1.xx\libraries\DigisparkUSB\DigiUSB.h".
 3) The sequence will be launch by sending "g" character through USB link (using Digiterm or Digi Monitor).
    To check all the sequence is performed asynchronously, you can send 't' to toggle the LED during servo motion!

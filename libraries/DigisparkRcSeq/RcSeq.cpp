@@ -11,6 +11,7 @@
  3) <SoftRcPulseOut>: a library mainly based on the <SoftwareServo> library, but with a better pulse generation to limit jitter
  RC Signals (receiver outputs) can be assigned to a control type:
  -Stick Positions (up to 8, but in practice, 4 is the maximum to manually discriminate each stick position)
+ -Multi position switch (2 pos switch, 3 pos switch, or more, eg. rotactor)
  -Keyboard (<RcSeq> assumes Push-Buttons associated Pulse duration are equidistant)
  -Custom Keyboard (The pulse durations can be defined independently for each Push-Button)
  Some definitions:
@@ -20,7 +21,7 @@
  CAUTION: the end user shall also use asynchronous programmation method in the loop() function (no blocking functions such as delay() or pulseIn()).
  http://p.loussouarn.free.fr
 
- Francais: par RC Navy (2012)
+ Francais: par RC Navy (2012/2013)
  ========
  <RcSeq> est une librairie asynchrone pour ATmega328P (UNO), ATtiny84 et ATtiny85 pour creer facilement des sequences de servos et/ou executer des actions depuis des commandes RC.
  Elle peut egalement etre utilisee pour lancer des "actions courtes" (la duree doit etre inferieure a 20ms pour ne pas perturber la commande des servos)
@@ -31,6 +32,7 @@
  3) <SoftRcPulseOut>: une librairie majoritairement basee sur la librairie <SoftwareServo>, mais avec une meilleur generation des impulsions pour limiter la gigue
  Les signaux RC (sorties du recepteur) peuvent etre associes a un type de controle:
  -Positions de Manche (jusqu'a 8, mais en pratique, 4 est le maximum pour discriminer manuellement les positions du manche)
+ -Interrupteur multi-positions (interrupteur 2 pos, interrupteur 3 pos, ou plus, ex. rotacteur)
  -Clavier (<RcSeq> suppose que les durees d'impulsion des Bouton-Poussoirs sont equidistantes)
  -Clavier "Maison" (Les durees d'impulsion peuvent etre definies de manière independante pour chaque Bouton-Poussoir)
  Quelques definitions:
@@ -74,14 +76,10 @@
 /*************************************************************************
 								MACROS
 *************************************************************************/
-/* For an easy Library Version Management */
-#define LIB_VERSION			1
-#define LIB_REVISION			0
-
 #define STR(s)				#s
 #define MAKE_TEXT_VER_REV(Ver,Rev)	(char*)(STR(Ver)"."STR(Rev))
 
-#define LIB_TEXT_VERSION_REVISION	MAKE_TEXT_VER_REV(LIB_VERSION,LIB_REVISION) /* Make Full version as a string "Ver.Rev" */
+#define LIB_TEXT_VERSION_REVISION	MAKE_TEXT_VER_REV(RC_SEQ_LIB_VERSION,RC_SEQ_LIB_REVISION) /* Make Full version as a string "Ver.Rev" */
 
 /* A Set of Macros for bit manipulation */
 #define SET_BIT(Value,BitIdx)		(Value)|= (1<<(BitIdx))
@@ -92,11 +90,8 @@
 #define REFRESH_INTERVAL_MS            20L
 
 /* A pulse shall be valid during XXXX_PULSE_CHECK_MS before being taken into account */
-#define STICK_PULSE_CHECK_MS           100L
-#define KBD_PULSE_CHECK_MS            	10L
-
-/* Duration between 2 consecutive commands */
-#define INTER_CMD_DURATION_MS          1000L
+#define STICK_PULSE_CHECK_MS           150L
+#define KBD_PULSE_CHECK_MS            	50L
 
 /* Free servo Indicator */
 #define NO_SEQ_LINE                    255
@@ -115,11 +110,18 @@
 #define PGM_READ_32(FlashAddr)		pgm_read_dword(&(FlashAddr))
 
 /*
-STICK TYPE:
+STICK TYPE: (dead zone expected at the middle)
 ==========
 Pos 0     1      2     3
   |---|-|---|--|---|-|---|
 1000us                 2000us (Typical Pulse Width values)
+
+MULTI_POS_SW: (Middle area active as well)
+============
+Pos 0     1     2     3     4
+  |---|-|---|-|---|-|---|-|---|
+1000us                      2000us (Typical Pulse Width values)
+
 */
 #define ACTIVE_AREA_STEP_NBR           3
 #define INACTIVE_AREA_STEP_NBR         1
@@ -156,11 +158,13 @@ typedef struct {
 }RcCmdSt_t;
 #endif
 
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 typedef struct {
   SoftRcPulseOut Motor;
   uint16_t       RefreshNb;       /* Used to store the number of refresh to perform during a servo motion (if not 0 -> Motion in progress) */
   uint8_t        SeqLineInProgress;
 }ServoSt_t;
+#endif
 /*************************************************************************
 							GLOBAL VARIABLES
 *************************************************************************/
@@ -172,11 +176,15 @@ static RcCmdSt_t          RcChannel[RC_CMD_MAX_NB];
 #endif
 #ifdef RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT
 #define  AsMember 	   .
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 static ServoSt_t          Servo[SERVO_MAX_NB];
+#endif
 static CmdSequenceSt_t    CmdSequence[SEQUENCE_MAX_NB];
 #else
 #define  AsMember 	   ->
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 static ServoSt_t          **Servo=NULL;
+#endif
 static CmdSequenceSt_t    **CmdSequence=NULL;
 #endif
 /*************************************************************************
@@ -217,12 +225,12 @@ void RcSeq_Init(void)
 //========================================================================================================================
 uint8_t RcSeq_LibVersion(void)
 {
-	return(LIB_VERSION);
+	return(RC_SEQ_LIB_VERSION);
 }
 //========================================================================================================================
 uint8_t RcSeq_LibRevision(void)
 {
-	return(LIB_REVISION);
+	return(RC_SEQ_LIB_REVISION);
 }
 //========================================================================================================================
 char *RcSeq_LibTextVersionRevision(void)
@@ -230,6 +238,7 @@ char *RcSeq_LibTextVersionRevision(void)
 	return(LIB_TEXT_VERSION_REVISION);
 }
 //========================================================================================================================
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 void RcSeq_DeclareServo(uint8_t Idx, uint8_t DigitalPin)
 {
 #ifdef RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT
@@ -250,6 +259,7 @@ void RcSeq_DeclareServo(uint8_t Idx, uint8_t DigitalPin)
 	}
 #endif
 }
+#endif
 //========================================================================================================================
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 void RcSeq_DeclareSignal(uint8_t Idx, uint8_t DigitalPin)
@@ -298,7 +308,8 @@ uint32_t StartMinMs[SERVO_MAX_NB];
 #else
 	LoadSequenceOrShortAction(CmdIdx,Pos,(void*)Table, SequenceLength);
 #endif
-
+	
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 	/* Get initial pulse width for each Servo */
 	for(Idx=0;Idx<SERVO_MAX_NB;Idx++)
 	{
@@ -317,6 +328,7 @@ uint32_t StartMinMs[SERVO_MAX_NB];
 			}
 		}
 	}
+#endif
 }
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 //========================================================================================================================
@@ -381,7 +393,8 @@ uint32_t        MotionDurationMs, StartOfSeqMs, EndOfSeqMs, Pos;
 uint16_t        StartInDegrees, EndInDegrees;
 
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
-uint8_t         ChIdx, CmdPos;
+uint8_t         ChIdx;
+int8_t          CmdPos; /* Shall be signed */
 uint32_t        RcPulseWidthUs;
 
 	/* Asynchronous RC Command acquisition */
@@ -394,11 +407,8 @@ uint32_t        RcPulseWidthUs;
 		{
 			if(RcChannel[ChIdx].Pos.Idx!=CmdPos)
 			{
-				  if((millis()-RcChannel[ChIdx].Pos.StartChronoMs)>=INTER_CMD_DURATION_MS) /* Check the last command was received for at least 1 second */
-				  {
-					  RcChannel[ChIdx].Pos.Idx=CmdPos;
-					  RcChannel[ChIdx].Pos.StartChronoMs=millis();
-				  }
+				  RcChannel[ChIdx].Pos.Idx=CmdPos;
+				  RcChannel[ChIdx].Pos.StartChronoMs=millis();
 			}	
 			else
 			{
@@ -416,7 +426,7 @@ uint32_t        RcPulseWidthUs;
 	}
 #endif
     NowMs=millis();
-    if((NowMs - StartChronoInterPulseMs) >= 20L)
+    if((NowMs - StartChronoInterPulseMs) >= 20UL)
     {
 		/* We arrive here every 20 ms */
 		/* Asynchronous Servo Sequence management */
@@ -448,6 +458,7 @@ uint32_t        RcPulseWidthUs;
 					continue;
 				}
 #endif
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 				if(Servo[ServoIdx] AsMember RefreshNb && SeqLine!=Servo[ServoIdx] AsMember SeqLineInProgress)
 				{
 					continue;
@@ -484,9 +495,12 @@ uint32_t        RcPulseWidthUs;
 						}
 					}
 				}
+#endif
 			}
 		}
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 		SoftRcPulseOut::refresh(1); /* Force Refresh */
+#endif
 		StartChronoInterPulseMs=millis();
     }
 }
@@ -535,9 +549,9 @@ uint16_t PulseMinUs,PulseMaxUs;
     {
         switch(RcChannel[ChIdx].Type)
         {            
-	    case  RC_CMD_STICK: /* No break: normal */
-            case  RC_CMD_KEYBOARD:
-            if(Idx<(RcChannel[ChIdx].PosNb/2))
+            case RC_CMD_STICK: /* No break: normal */
+            case RC_CMD_MULTI_POS_SW:
+            if( (RcChannel[ChIdx].Type==RC_CMD_MULTI_POS_SW) || ((RcChannel[ChIdx].Type==RC_CMD_STICK) && (Idx<(RcChannel[ChIdx].PosNb/2))) )
             {
                 PulseMinUs=RcChannel[ChIdx].PulseMinUs+KEY_MIN_VAL(Idx,RcChannel[ChIdx].StepUs);
                 PulseMaxUs=RcChannel[ChIdx].PulseMinUs+KEY_MAX_VAL(Idx,RcChannel[ChIdx].StepUs);
@@ -548,11 +562,11 @@ uint16_t PulseMinUs,PulseMaxUs;
                 PulseMaxUs=RcChannel[ChIdx].PulseMaxUs-KEY_MIN_VAL(RcChannel[ChIdx].PosNb-1-Idx,RcChannel[ChIdx].StepUs);
             }
             break;
-			
-	    case RC_CMD_CUSTOM:
-	    PulseMinUs=(uint16_t)PGM_READ_16(RcChannel[ChIdx].KeyMap[Idx].Min);
-	    PulseMaxUs=(uint16_t)PGM_READ_16(RcChannel[ChIdx].KeyMap[Idx].Max);
-	    break;
+            
+            case RC_CMD_CUSTOM:
+            PulseMinUs=(uint16_t)PGM_READ_16(RcChannel[ChIdx].KeyMap[Idx].Min);
+            PulseMaxUs=(uint16_t)PGM_READ_16(RcChannel[ChIdx].KeyMap[Idx].Max);
+            break;
         }
         if((PulseWidthUs>=PulseMinUs) && (PulseWidthUs<=PulseMaxUs))
         {

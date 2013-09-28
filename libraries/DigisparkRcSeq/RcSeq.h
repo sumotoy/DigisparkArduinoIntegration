@@ -2,7 +2,7 @@
 #define RC_SEQ_H
 
 /*
- English: by RC Navy (2012)
+ English: by RC Navy (2012/2013)
  =======
  <RcSeq> is an asynchronous library for ATmega328P (UNO), ATtiny84 and ATtiny85 to easily create servo's sequences and/or to execute short actions from RC commands.
  It can also be used to trig some short "actions" (the duration must be less than 20ms to not disturb the servo commands)
@@ -13,6 +13,7 @@
  3) <SoftRcPulseOut>: a library mainly based on the <SoftwareServo> library, but with a better pulse generation to limit jitter
  RC Signals (receiver outputs) can be assigned to a control type:
  -Stick Positions (up to 8, but in practice, 4 is the maximum to manually discriminate each stick position)
+ -Multi position switch (2 pos switch, 3 pos switch, or more, eg. rotactor)
  -Keyboard (<RcSeq> assumes Push-Buttons associated Pulse duration are equidistant)
  -Custom Keyboard (The pulse durations can be defined independently for each Push-Button)
  Some definitions:
@@ -22,7 +23,7 @@
  CAUTION: the end user shall also use asynchronous programmation method in the loop() function (no blocking functions such as delay() or pulseIn()).
  http://p.loussouarn.free.fr
 
- Francais: par RC Navy (2012)
+ Francais: par RC Navy (2012/2013)
  ========
  <RcSeq> est une librairie asynchrone pour ATmega328P (UNO), ATtiny84 et ATtiny85 pour creer facilement des sequences de servos et/ou executer des actions depuis des commandes RC.
  Elle peut egalement etre utilisee pour lancer des "actions courtes" (la duree doit etre inferieure a 20ms pour ne pas perturber la commande des servos)
@@ -33,6 +34,7 @@
  3) <SoftRcPulseOut>: une librairie majoritairement basee sur la librairie <SoftwareServo>, mais avec une meilleur generation des impulsions pour limiter la gigue
  Les signaux RC (sorties du recepteur) peuvent etre associes a un type de controle:
  -Positions de Manche (jusqu'a 8, mais en pratique, 4 est le maximum pour discriminer manuellement les positions du manche)
+ -Interrupteur multi-positions (interrupteur 2 pos, interrupteur 3 pos, ou plus, ex. rotacteur)
  -Clavier (<RcSeq> suppose que les durees d'impulsion des Bouton-Poussoirs sont equidistantes)
  -Clavier "Maison" (Les durees d'impulsion peuvent etre definies de manière independante pour chaque Bouton-Poussoir)
  Quelques definitions:
@@ -45,15 +47,20 @@
 /**********************************************/
 /*         RCSEQ LIBRARY CONFIGURATION        */
 /**********************************************/
-//#define RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT /* Comment this line if you use <DigiUSB> library in your sketch */
-#define RC_SEQ_WITH_SHORT_ACTION_SUPPORT	/* This allows to put call to short action in sequence table */
+#define RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT  /* Comment this line if you use <DigiUSB> library in your sketch */
+//#define RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT /* Uncomment this if you use <SoftRcPulseOut> library in your sketch for servos and ESC */
+#define RC_SEQ_WITH_SHORT_ACTION_SUPPORT      /* Uncomment this to allows to put call to short action in sequence table */
 
 
 
 /**********************************************/
 /*      /!\   Do not touch below   /!\        */
 /**********************************************/
-#define RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT   /* Do NOT comment this line for DigiSpark */
+/* For an easy Library Version Management */
+#define RC_SEQ_LIB_VERSION		2
+#define RC_SEQ_LIB_REVISION		0
+
+#define RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT   /* Do NOT comment this line for DigiSpark, but you can for UNO */
 
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 #include <TinyPinChange.h>
@@ -64,7 +71,11 @@
 #ifndef RC_SEQ_WITH_SHORT_ACTION_SUPPORT
 #warning RC_SEQ_WITH_SHORT_ACTION_SUPPORT disabled: no short action possible!!!
 #endif
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 #include <SoftRcPulseOut.h>
+#else
+#warning RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT disabled: no Servo/ESC command possible!!!
+#endif
 
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
@@ -114,7 +125,7 @@ typedef struct {
 /* Macro to declare a short action (to use in "Sequence[]" structure table) */
 #define SHORT_ACTION_TO_PERFORM(ShortAction, StartActionOffsetMs) {255, 0, 0, (StartActionOffsetMs), 0L, (ShortAction)},
 
-enum {RC_CMD_STICK=0, RC_CMD_KEYBOARD, RC_CMD_CUSTOM};
+enum {RC_CMD_STICK=0, RC_CMD_MULTI_POS_SW, RC_CMD_CUSTOM};
 
 #define RC_SEQUENCE(Sequence)			Sequence, TABLE_ITEM_NBR(Sequence)
 #define RC_CUSTOM_KEYBOARD(KeyMap)		KeyMap, TABLE_ITEM_NBR(KeyMap)
@@ -125,13 +136,16 @@ void    RcSeq_Init(void);
 uint8_t RcSeq_LibVersion(void);
 uint8_t RcSeq_LibRevision(void);
 char   *RcSeq_LibTextVersionRevision(void);
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 void    RcSeq_DeclareServo(uint8_t Idx, uint8_t DigitalPin);
+#endif
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 void    RcSeq_DeclareSignal(uint8_t Idx, uint8_t DigitalPin);
 void    RcSeq_DeclareKeyboardOrStickOrCustom(uint8_t ChIdx, uint8_t Type, uint16_t PulseMinUs, uint16_t PulseMaxUs, KeyMap_t *KeyMapTbl, uint8_t PosNb);
 void    RcSeq_DeclareCustomKeyboard(uint8_t ChIdx, KeyMap_t *KeyMapTbl, uint8_t PosNb);
-#define RcSeq_DeclareStick(ChIdx, PulseMinUs, PulseMaxUs, PosNb)      RcSeq_DeclareKeyboardOrStickOrCustom(ChIdx, RC_CMD_STICK, PulseMinUs, PulseMaxUs, NULL, PosNb)
-#define RcSeq_DeclareKeyboard(ChIdx, PulseMinUs, PulseMaxUs, KeyNb)   RcSeq_DeclareKeyboardOrStickOrCustom(ChIdx, RC_CMD_KEYBOARD, PulseMinUs, PulseMaxUs, NULL, KeyNb)
+#define RcSeq_DeclareStick(ChIdx, PulseMinUs, PulseMaxUs, PosNb)           RcSeq_DeclareKeyboardOrStickOrCustom(ChIdx, RC_CMD_STICK, PulseMinUs, PulseMaxUs, NULL, PosNb)
+#define RcSeq_DeclareMultiPosSwitch(ChIdx, PulseMinUs, PulseMaxUs, PosNb)  RcSeq_DeclareKeyboardOrStickOrCustom(ChIdx, RC_CMD_MULTI_POS_SW, PulseMinUs, PulseMaxUs, NULL, PosNb)
+#define RcSeq_DeclareKeyboard(ChIdx, PulseMinUs, PulseMaxUs, KeyNb)        RcSeq_DeclareKeyboardOrStickOrCustom(ChIdx, RC_CMD_MULTI_POS_SW, PulseMinUs, PulseMaxUs, NULL, KeyNb)
 #ifdef RC_SEQ_WITH_SHORT_ACTION_SUPPORT
 void    RcSeq_DeclareCommandAndShortAction(uint8_t CmdIdx,uint8_t TypeCmd,void(*ShortAction)(void));
 #endif
@@ -161,6 +175,7 @@ void    RcSeq_Refresh(void);
 #define RcSeq_DeclareManche					RcSeq_DeclareStick
 #define RcSeq_DeclareClavier					RcSeq_DeclareKeyboard
 #define RcSeq_DeclareClavierMaison				RcSeq_DeclareCustomKeyboard
+#define RcSeq_DeclareInterMultiPos				RcSeq_DeclareMultiPosSwitch
 #define RcSeq_DeclareCommandeEtActionCourte			RcSeq_DeclareCommandAndShortAction
 #endif
 #define RcSeq_DeclareCommandeEtSequence			RcSeq_DeclareCommandAndSequence

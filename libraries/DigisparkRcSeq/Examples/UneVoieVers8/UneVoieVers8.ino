@@ -1,7 +1,15 @@
 #include <RcSeq.h>
 #include <TinyPinChange.h>  /* Ne pas oublier d'inclure la librairie <TinyPinChange>  qui est utilisee par la librairie <RcSeq> */
 #include <SoftRcPulseIn.h>  /* Ne pas oublier d'inclure la librairie <SoftRcPulseIn>  qui est utilisee par la librairie <RcSeq> */
-#include <SoftRcPulseOut.h> /* Ne pas oublier d'inclure la librairie <SoftRcPulseOut> qui est utilisee par la librairie <RcSeq> */
+
+/*
+IMPORTANT:
+Pour compiler ce sketch, RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT et RC_SEQ_WITH_SHORT_ACTION_SUPPORT doivent etre definie
+dans ChemainDesLibraires/(Digispark)RcSeq/RcSeq.h et RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT doit etre mis en commentaire.
+
+RC Navy 2013
+http://p.loussouarn.free.fr
+*/
 
 /*================= COMMMANDE DE 8 SORTIES ON/OFF PAR 8 INTERS POUSSOIR  ========================
    Les 8 relais ou sont connectés aux prise n°1,2,3,4,5,6,7,8 d'un ATtiny84
@@ -34,12 +42,20 @@ KeyMap_t ClavierMaison[] PROGMEM ={  {VALEUR_CENTRALE_US(1100,TOLERANCE)}, /* BP
 
 //==============================================================================================
 /* Astuce: une macro pour n'ecrire qu'une seule fois la fonction ActionX() */
-#define DECLARE_ACTION(Idx)  \
-void Action##Idx(void)       \
-{                            \
-static boolean Etat=HIGH;    \
-    digitalWrite(Idx, Etat); \
-    Etat=!Etat;              \
+#define DECLARE_ACTION(Idx)                              \
+void Action##Idx(void)                                   \
+{                                                        \
+static uint32_t DebutMs=millis();                        \
+static boolean Etat=HIGH;                                \
+/* Depuis la version 2.0 de la lib <RcSeq>, pour      */ \
+/* des raisons de reactivite, la tempo inter-commande */ \
+/* doit etre geree dans le sketch utilisateur.        */ \
+  if(millis() - DebutMs >= 500UL)                        \
+  {                                                      \
+    DebutMs=millis();                                    \
+    digitalWrite(Idx, Etat);                             \
+    Etat=!Etat;                                          \
+  }                                                      \
 }
 
 /* Declaration des actions en utilisant la macro DECLARE_ACTION(Idx) avec Idx = le numero de l'action et de la pin (le ##Idx sera remplace automatiquement par la valeur de Idx */
