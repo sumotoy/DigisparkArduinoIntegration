@@ -37,6 +37,7 @@ uint8_t Ret=0;
 	next = first;
 	first = this;
 	pinMode(_Pin,INPUT);
+	digitalWrite(_Pin, HIGH);
 	_VirtualPortIdx=TinyPinChange_RegisterIsr(_Pin,SoftRcPulseIn::SoftRcPulseInInterrupt);
 	if(_VirtualPortIdx>=0)
 	{
@@ -92,7 +93,7 @@ SoftRcPulseIn *RcPulseIn;
 
   for ( RcPulseIn = first; RcPulseIn != 0; RcPulseIn = RcPulseIn->next )
   {
-    if(TinyPinChange_GetPinEvent(RcPulseIn->_VirtualPortIdx)&RcPulseIn->_PinMask)
+    if(TinyPinChange_GetPortEvent(RcPulseIn->_VirtualPortIdx)&RcPulseIn->_PinMask)
     {
 	  if(digitalRead(RcPulseIn->_Pin))
 	  {
