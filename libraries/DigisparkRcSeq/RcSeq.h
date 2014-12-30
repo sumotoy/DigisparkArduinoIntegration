@@ -48,17 +48,15 @@
 /*         RCSEQ LIBRARY CONFIGURATION        */
 /**********************************************/
 #define RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT  /* Comment this line if you use <DigiUSB> library in your sketch */
-//#define RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT /* Uncomment this if you use <SoftRcPulseOut> library in your sketch for servos and ESC */
+#define RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT /* Uncomment this if you use <SoftRcPulseOut> library in your sketch for servos and ESC */
 #define RC_SEQ_WITH_SHORT_ACTION_SUPPORT      /* Uncomment this to allows to put call to short action in sequence table */
+#define RC_SEQ_CONTROL_SUPPORT                /* Uncomment this to allow control on sequences: start condition and end of sequence */
 
 
 
 /**********************************************/
 /*      /!\   Do not touch below   /!\        */
 /**********************************************/
-/* For an easy Library Version Management */
-#define RC_SEQ_LIB_VERSION		2
-#define RC_SEQ_LIB_REVISION		0
 
 #define RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT   /* Do NOT comment this line for DigiSpark, but you can for UNO */
 
@@ -122,7 +120,7 @@ typedef struct {
 #define MOTION_WITHOUT_SOFT_START_AND_STOP(ServoIndex,StartInDegrees,EndInDegrees,StartMvtOffsetMs,MvtDurationMs)      \
   {ServoIndex, StartInDegrees, EndInDegrees, StartMvtOffsetMs, MvtDurationMs, NULL},
 
-/* Macro to declare a short action (to use in "Sequence[]" structure table) */
+/* Macro to declare a short action (to be used in "Sequence[]" structure table) */
 #define SHORT_ACTION_TO_PERFORM(ShortAction, StartActionOffsetMs) {255, 0, 0, (StartActionOffsetMs), 0L, (ShortAction)},
 
 enum {RC_CMD_STICK=0, RC_CMD_MULTI_POS_SW, RC_CMD_CUSTOM};
@@ -138,20 +136,26 @@ uint8_t RcSeq_LibRevision(void);
 char   *RcSeq_LibTextVersionRevision(void);
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 void    RcSeq_DeclareServo(uint8_t Idx, uint8_t DigitalPin);
+void    RcSeq_ServoWrite(uint8_t Idx, uint16_t Angle);
 #endif
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 void    RcSeq_DeclareSignal(uint8_t Idx, uint8_t DigitalPin);
-void    RcSeq_DeclareKeyboardOrStickOrCustom(uint8_t ChIdx, uint8_t Type, uint16_t PulseMinUs, uint16_t PulseMaxUs, KeyMap_t *KeyMapTbl, uint8_t PosNb);
-void    RcSeq_DeclareCustomKeyboard(uint8_t ChIdx, KeyMap_t *KeyMapTbl, uint8_t PosNb);
+void    RcSeq_DeclareKeyboardOrStickOrCustom(uint8_t ChIdx, uint8_t Type, uint16_t PulseMinUs, uint16_t PulseMaxUs, const KeyMap_t *KeyMapTbl, uint8_t PosNb);
+void    RcSeq_DeclareCustomKeyboard(uint8_t ChIdx, const KeyMap_t *KeyMapTbl, uint8_t PosNb);
 #define RcSeq_DeclareStick(ChIdx, PulseMinUs, PulseMaxUs, PosNb)           RcSeq_DeclareKeyboardOrStickOrCustom(ChIdx, RC_CMD_STICK, PulseMinUs, PulseMaxUs, NULL, PosNb)
 #define RcSeq_DeclareMultiPosSwitch(ChIdx, PulseMinUs, PulseMaxUs, PosNb)  RcSeq_DeclareKeyboardOrStickOrCustom(ChIdx, RC_CMD_MULTI_POS_SW, PulseMinUs, PulseMaxUs, NULL, PosNb)
 #define RcSeq_DeclareKeyboard(ChIdx, PulseMinUs, PulseMaxUs, KeyNb)        RcSeq_DeclareKeyboardOrStickOrCustom(ChIdx, RC_CMD_MULTI_POS_SW, PulseMinUs, PulseMaxUs, NULL, KeyNb)
 #ifdef RC_SEQ_WITH_SHORT_ACTION_SUPPORT
-void    RcSeq_DeclareCommandAndShortAction(uint8_t CmdIdx,uint8_t TypeCmd,void(*ShortAction)(void));
+void    RcSeq_DeclareCommandAndShortAction(uint8_t CmdIdx, uint8_t TypeCmd, void(*ShortAction)(void));
 #endif
 #endif
-void    RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx,uint8_t TypeCmd,SequenceSt_t *Table, uint8_t SequenceLength);
-uint8_t RcSeq_LaunchSequence(SequenceSt_t *Table);
+#ifdef RC_SEQ_CONTROL_SUPPORT
+void    RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx, uint8_t TypeCmd, const SequenceSt_t *Table, uint8_t SequenceLength, uint8_t(*Control)(uint8_t Action, uint8_t CmdSeqIdx));
+enum {RC_SEQ_CONDITION, RC_SEQ_END_OF_SEQ};
+#else
+void    RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx, uint8_t TypeCmd, const SequenceSt_t *Table, uint8_t SequenceLength);
+#endif
+uint8_t RcSeq_LaunchSequence(const SequenceSt_t *Table);
 #ifdef RC_SEQ_WITH_SHORT_ACTION_SUPPORT
 #define RcSeq_LaunchShortAction(ShortAction)			if(ShortAction) ShortAction()
 #endif
