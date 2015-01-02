@@ -2,7 +2,7 @@
 #define RC_SEQ_H
 
 /*
- English: by RC Navy (2012/2013)
+ English: by RC Navy (2012-2015)
  =======
  <RcSeq> is an asynchronous library for ATmega328P (UNO), ATtiny84 and ATtiny85 to easily create servo's sequences and/or to execute short actions from RC commands.
  It can also be used to trig some short "actions" (the duration must be less than 20ms to not disturb the servo commands)
@@ -23,7 +23,7 @@
  CAUTION: the end user shall also use asynchronous programmation method in the loop() function (no blocking functions such as delay() or pulseIn()).
  http://p.loussouarn.free.fr
 
- Francais: par RC Navy (2012/2013)
+ Francais: par RC Navy (2012-2015)
  ========
  <RcSeq> est une librairie asynchrone pour ATmega328P (UNO), ATtiny84 et ATtiny85 pour creer facilement des sequences de servos et/ou executer des actions depuis des commandes RC.
  Elle peut egalement etre utilisee pour lancer des "actions courtes" (la duree doit etre inferieure a 20ms pour ne pas perturber la commande des servos)
@@ -58,7 +58,7 @@
 /*      /!\   Do not touch below   /!\        */
 /**********************************************/
 
-#define RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT   /* Do NOT comment this line for DigiSpark, but you can for UNO */
+#define RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT   /* Do NOT comment this line for now: still buggy (to do: fix this) */
 
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 #include <TinyPinChange.h>
@@ -140,6 +140,7 @@ void    RcSeq_ServoWrite(uint8_t Idx, uint16_t Angle);
 #endif
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 void    RcSeq_DeclareSignal(uint8_t Idx, uint8_t DigitalPin);
+boolean RcSeq_SignalTimeout(uint8_t Idx, uint8_t TimeoutMs, uint8_t *State);
 void    RcSeq_DeclareKeyboardOrStickOrCustom(uint8_t ChIdx, uint8_t Type, uint16_t PulseMinUs, uint16_t PulseMaxUs, const KeyMap_t *KeyMapTbl, uint8_t PosNb);
 void    RcSeq_DeclareCustomKeyboard(uint8_t ChIdx, const KeyMap_t *KeyMapTbl, uint8_t PosNb);
 #define RcSeq_DeclareStick(ChIdx, PulseMinUs, PulseMaxUs, PosNb)           RcSeq_DeclareKeyboardOrStickOrCustom(ChIdx, RC_CMD_STICK, PulseMinUs, PulseMaxUs, NULL, PosNb)
@@ -151,7 +152,7 @@ void    RcSeq_DeclareCommandAndShortAction(uint8_t CmdIdx, uint8_t TypeCmd, void
 #endif
 #ifdef RC_SEQ_CONTROL_SUPPORT
 void    RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx, uint8_t TypeCmd, const SequenceSt_t *Table, uint8_t SequenceLength, uint8_t(*Control)(uint8_t Action, uint8_t CmdSeqIdx));
-enum {RC_SEQ_CONDITION, RC_SEQ_END_OF_SEQ};
+enum {RC_SEQ_START_CONDITION, RC_SEQ_END_OF_SEQ};
 #else
 void    RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx, uint8_t TypeCmd, const SequenceSt_t *Table, uint8_t SequenceLength);
 #endif
@@ -166,25 +167,28 @@ void    RcSeq_Refresh(void);
 /*******************************************************/
 
 /* Macro en Francais de declaration mouvement   English native Macro to declare a motion */
-#define MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS			MOTION_WITH_SOFT_START_AND_STOP
-#define MVT_SANS_DEBUT_ET_FIN_MVT_LENTS			MOTION_WITHOUT_SOFT_START_AND_STOP
-#define ACTION_COURTE_A_EFFECTUER				SHORT_ACTION_TO_PERFORM
+#define MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS         MOTION_WITH_SOFT_START_AND_STOP
+#define MVT_SANS_DEBUT_ET_FIN_MVT_LENTS         MOTION_WITHOUT_SOFT_START_AND_STOP
+#define ACTION_COURTE_A_EFFECTUER               SHORT_ACTION_TO_PERFORM
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
-#define RC_CLAVIER_MAISON					RC_CUSTOM_KEYBOARD
-#define VALEUR_CENTRALE_US					CENTER_VALUE_US
+#define RC_CLAVIER_MAISON                       RC_CUSTOM_KEYBOARD
+#define VALEUR_CENTRALE_US                      CENTER_VALUE_US
 #endif
-
+#ifdef RC_SEQ_CONTROL_SUPPORT
+#define RC_SEQ_CONDITION_DE_DEPART              RC_SEQ_START_CONDITION
+#define RC_SEQ_FIN_DE_SEQ                       RC_SEQ_END_OF_SEQ
+#endif
 /*      Methodes en Francais                    English native methods */
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
-#define RcSeq_DeclareManche					RcSeq_DeclareStick
-#define RcSeq_DeclareClavier					RcSeq_DeclareKeyboard
-#define RcSeq_DeclareClavierMaison				RcSeq_DeclareCustomKeyboard
-#define RcSeq_DeclareInterMultiPos				RcSeq_DeclareMultiPosSwitch
-#define RcSeq_DeclareCommandeEtActionCourte			RcSeq_DeclareCommandAndShortAction
+#define RcSeq_DeclareManche                     RcSeq_DeclareStick
+#define RcSeq_DeclareClavier                    RcSeq_DeclareKeyboard
+#define RcSeq_DeclareClavierMaison              RcSeq_DeclareCustomKeyboard
+#define RcSeq_DeclareInterMultiPos              RcSeq_DeclareMultiPosSwitch
+#define RcSeq_DeclareCommandeEtActionCourte     RcSeq_DeclareCommandAndShortAction
 #endif
-#define RcSeq_DeclareCommandeEtSequence			RcSeq_DeclareCommandAndSequence
-#define RcSeq_LanceSequence					RcSeq_LaunchSequence
-#define RcSeq_LanceActionCourte				RcSeq_LaunchShortAction
-#define RcSeq_Rafraichit					RcSeq_Refresh
+#define RcSeq_DeclareCommandeEtSequence         RcSeq_DeclareCommandAndSequence
+#define RcSeq_LanceSequence                     RcSeq_LaunchSequence
+#define RcSeq_LanceActionCourte                 RcSeq_LaunchShortAction
+#define RcSeq_Rafraichit                        RcSeq_Refresh
 
 #endif

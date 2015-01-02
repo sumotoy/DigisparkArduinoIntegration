@@ -1,6 +1,6 @@
 #include "RcSeq.h"
 /*
- English: by RC Navy (2012/2013)
+ English: by RC Navy (2012-2015)
  =======
  <RcSeq> is an asynchronous library for ATmega328P (UNO), ATtiny84 and ATtiny85 to easily create servo's sequences and/or to execute short actions from RC commands.
  It can also be used to trig some short "actions" (the duration must be less than 20ms to not disturb the servo commands)
@@ -21,7 +21,7 @@
  CAUTION: the end user shall also use asynchronous programmation method in the loop() function (no blocking functions such as delay() or pulseIn()).
  http://p.loussouarn.free.fr
 
- Francais: par RC Navy (2012/2013)
+ Francais: par RC Navy (2012-2015)
  ========
  <RcSeq> est une librairie asynchrone pour ATmega328P (UNO), ATtiny84 et ATtiny85 pour creer facilement des sequences de servos et/ou executer des actions depuis des commandes RC.
  Elle peut egalement etre utilisee pour lancer des "actions courtes" (la duree doit etre inferieure a 20ms pour ne pas perturber la commande des servos)
@@ -58,7 +58,7 @@
    |          |          |                                 \
    |      X   O   X      | --> RC_IMPULSION_NIVEAU_MOINS_1 |
    |          |          |                                 |
-   | X        O       X  | --> RC_IMPULSION_NIVEAU_MOINS_2 |
+   |  X       O       X  | --> RC_IMPULSION_NIVEAU_MOINS_2 |
    '---------------------'                                /
       |   |   |   |   |
       |   |   |   |   |                                   \
@@ -279,6 +279,15 @@ void RcSeq_DeclareSignal(uint8_t Idx, uint8_t DigitalPin)
 		RcChannel[Idx].Pulse.attach(DigitalPin);
 		CmdSignalNb++;
 	}
+}
+//========================================================================================================================
+boolean RcSeq_SignalTimeout(uint8_t Idx, uint8_t TimeoutMs, uint8_t *State)
+{
+	if(Idx < RC_CMD_MAX_NB)
+	{
+		return(RcChannel[Idx].Pulse.timeout(TimeoutMs, State));
+	}
+	return(0);
 }
 //========================================================================================================================
 void RcSeq_DeclareKeyboardOrStickOrCustom(uint8_t ChIdx, uint8_t Type, uint16_t PulseMinUs, uint16_t PulseMaxUs, const KeyMap_t *KeyMap, uint8_t PosNb)
@@ -554,7 +563,7 @@ uint8_t Idx, Ret = 0;
 					uint8_t Go = 1;
 					if(CmdSequence[Idx].Control != NULL)
 					{
-					  Go = CmdSequence[Idx].Control(RC_SEQ_CONDITION, Idx);
+					  Go = CmdSequence[Idx].Control(RC_SEQ_START_CONDITION, Idx);
 //					  Serial.print(F("Go for Seq["));Serial.print(Idx);Serial.print(F("] "));Serial.println(Go?F("Yes"):F("No"));
 					}
 					if(Go)
