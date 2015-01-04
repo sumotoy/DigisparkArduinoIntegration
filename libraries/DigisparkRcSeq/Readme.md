@@ -26,7 +26,7 @@ Some examples of use cases:
 		
 
 * **Multi-switch:**
-	* Up to 8 digital pins drived from a single RC channel
+	* Up to 8 digital pins driven from a single RC channel
 		* using the stick of the transmitter
 		* using 8 push-buttons in place of the stick potentiometer
 
@@ -55,12 +55,44 @@ Triggers:
 
 * a launch function call in the sketch.
 
+API/methods:
+-----------
+* RcSeq_Init()
+* RcSeq_DeclareSignal()
+* RcSeq_DeclareStick()
+* RcSeq_DeclareKeyboard()
+* RcSeq_DeclareCustomKeyboard()
+* RcSeq_DeclareMultiPosSwitch()
+* RcSeq_SignalTimeout()
+* RcSeq_DeclareServo()
+* RcSeq_DeclareCommandAndSequence()
+* RcSeq_DeclareCommandAndShortAction()
+* RcSeq_LaunchSequence()
+* RcSeq_LaunchShortAction()
+* RcSeq_Refresh()
+* RcSeq_LibVersion()
+* RcSeq_LibRevision()
+* RcSeq_LibTextVersionRevision()
+
+Macros and constants:
+--------------------
+* const SequenceSt_t
+* const KeyMap_t
+* RC_SEQUENCE()
+* RC_CUSTOM_KEYBOARD()
+* SHORT_ACTION_TO_PERFORM()
+* MOTION_WITH_SOFT_START_AND_STOP()
+* MOTION_WITHOUT_SOFT_START_AND_STOP()
+* CENTER_VALUE_US
+* RC_SEQ_START_CONDITION
+* RC_SEQ_END_OF_SEQ
+
 Design considerations:
 ---------------------
 
 The **RcSeq** library requires 3 other libraries written by the same author:
 
- 1. **TinyPinChange**:  a library to catch asynchronously the input change using Pin Change Interruption capability of the AVR.
+ 1. **TinyPinChange**:  a library to catch asynchronously the input change using Pin Change Interruption capability of the AVR microcontroller.
 
  2. **SoftRcPulseIn**:  a library to catch asynchronously the input pulses using **TinyPinChange** library.
 
