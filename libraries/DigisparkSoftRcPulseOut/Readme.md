@@ -24,11 +24,24 @@ Develop your project on an arduino UNO or MEGA, and then shrink it by loading th
 
 API/methods:
 -----------
-* The **SoftRcPulseOut** library uses the same API as the regular **SoftwareServo** library.
+* The **SoftRcPulseOut** library uses the same API as the regular **SoftwareServo** library:
+	* attach()
+	* attached()
+	* detach()
+	* write()
+	* read()
+	* setMinimumPulse()
+	* setMaximumPulse()
+	* refresh()
 
 * Two additional methods allow using µs rather than angle in ° :
 	* write_us()
 	* read_us()
+
+* Methods for version management:
+	* LibVersion
+	* LibRevision
+	* LibTextVersionRevision
 
 * Synchronization:
 	* By giving **_1_** or **_true_** as optional argument for the **SoftRcPulseOut::refresh()** method, the pulses are refreshed immediately (without waiting for the usual 20ms).
