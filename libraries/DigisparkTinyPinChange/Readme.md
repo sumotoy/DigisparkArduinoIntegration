@@ -3,12 +3,20 @@ TinyPinChange library
 
 **TinyPinChange** is an asynchronous (interrupt-driven) library designed to detect event (rising or falling edege) on pins.
 
+Very often in the arduino world, users complain about conflicts between libraries.
+
+This **TinyPinChange** library allows to share the "pin change interrupt" vector for several "clients".
+
+For example, it's possible to use the **SoftRcPulseIn** library whilst using the **SoftSerial** library: both libraries rely on the **TinyPinChange** library.
+
 Some examples of use cases:
 -------------------------
 * **Event detector** (on pins)
 * **Frequency meter**
 * **Pulse width meter**
 * **Tachometer**
+* **Duty cycle measurement**
+* **Software serial port** (see **SoftSerial** library which relies on TinyPinChange)
 
 Supported Arduinos:
 ------------------
