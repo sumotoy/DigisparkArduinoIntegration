@@ -35,6 +35,12 @@ Some examples of use cases:
 		* from predefined positions of the stick on the transmitter
 		* from a regular ON/OFF switch (for demo on table without RC set)
 
+* **Animatronics sequences:**
+
+	* leg motion,
+	* mouth motion,
+	* eyes motion, 
+	* etc.
 
 Triggers:
 --------
