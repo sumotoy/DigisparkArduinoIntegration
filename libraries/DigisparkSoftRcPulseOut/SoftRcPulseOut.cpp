@@ -29,7 +29,7 @@
 #if (TIMER_TO_USE_FOR_MILLIS==1)
 #define SOFT_RC_PULSE_OUT_TCNT TCNT1 //For example for ATtiny85
 #else
-#define SOFT_RC_PULSE_OUT_TCNT TCNT0 //For example for ATtiny84
+#define SOFT_RC_PULSE_OUT_TCNT TCNT0 //For example for ATtiny84 and ATtiny167
 #endif
 #endif
 

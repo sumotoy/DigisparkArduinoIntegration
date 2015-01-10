@@ -97,13 +97,13 @@ enum {DOOR_SERVO_LEFT = 0, DOOR_SERVO_RIGHT, SERVO_NB}; /* In this sketch, 2 ser
 /***************************************************/
 /* STEP #5: Digital pin assignment for Command     */
 /***************************************************/
-#define COMMAND_PIN                        3 /* This pin can be connected to a channel of a RC Receiver or to a regular ON/OFF switch (switch wired between pin and Ground) */
+#define COMMAND_PIN                        2 /* This pin can be connected to a channel of a RC Receiver or to a regular ON/OFF switch (switch wired between pin and Ground) */
 
 /**************************************************/
 /* STEP #6: Digital Pins assignment for Servos    */
 /**************************************************/
-#define DOOR_SERVO_LEFT_PIN                4
-#define DOOR_SERVO_RIGHT_PIN               5
+#define DOOR_SERVO_LEFT_PIN                3
+#define DOOR_SERVO_RIGHT_PIN               4
 
 /*************************************************************************************/
 /* STEP #7: Declaration of the angle of the servos for the different motions (in °)  */
@@ -208,7 +208,7 @@ uint8_t LastExecutedSeqIdx;
 void setup()
 {
   
-  #if !defined(__AVR_ATtiny24__) && !defined(__AVR_ATtiny44__) && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny25__) && !defined(__AVR_ATtiny45__) && !defined(__AVR_ATtiny85__)
+  #if !defined(__AVR_ATtiny24__) && !defined(__AVR_ATtiny44__) && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny25__) && !defined(__AVR_ATtiny45__) && !defined(__AVR_ATtiny85__) && !defined(__AVR_ATtiny167__)
   Serial.begin(9600);
   Serial.print(F("RcSeq library V"));Serial.print(RcSeq_LibTextVersionRevision());Serial.println(F(" demo: advanced doors sequences"));
   #endif
@@ -286,7 +286,7 @@ void loop()
 uint8_t Control(uint8_t Action, uint8_t SeqIdx)
 {
   uint8_t Ret = 0;
-  #if !defined(__AVR_ATtiny24__) && !defined(__AVR_ATtiny44__) && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny25__) && !defined(__AVR_ATtiny45__) && !defined(__AVR_ATtiny85__)
+  #if !defined(__AVR_ATtiny24__) && !defined(__AVR_ATtiny44__) && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny25__) && !defined(__AVR_ATtiny45__) && !defined(__AVR_ATtiny85__) && !defined(__AVR_ATtiny167__)
   Serial.print("Action=");Serial.print(Action);Serial.print(" SeqIdx=");Serial.println(SeqIdx);
   #endif
   switch(Action)

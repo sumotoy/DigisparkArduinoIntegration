@@ -13,7 +13,7 @@ Some examples of use cases:
 
 Supported Arduinos:
 ------------------
-* **ATmega368 (UNO)**
+* **ATmega328 (UNO)**
 * **ATmega2560 (MEGA)**
 * **ATtiny84 (Standalone)**
 * **ATtiny85 (Standalone or Digispark)**

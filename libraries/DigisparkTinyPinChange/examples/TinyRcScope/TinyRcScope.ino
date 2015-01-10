@@ -109,11 +109,11 @@ typedef struct{
 static DispSt_t Disp;
 
 volatile uint8_t IntRcSynch = 0;
-
+uint8_t VirtualPortIdx;
 /*
 RC Signal
-  ____                              ____
-_|    \____________________________/    \_
+  ____                              ____ 
+_|    |____________________________|    |_
  <---->
 Width_us
  <-------------------------------->
@@ -127,7 +127,7 @@ void setup()
 
   Disp.State = DISP_COMPUTE;
   
-  TinyPinChange_RegisterIsr(0,  InterruptFunctionToCall); /* As all pins are on the same port, a single ISR is needed */
+  VirtualPortIdx = TinyPinChange_RegisterIsr(RC_CHANNEL_PIN,  InterruptFunctionToCall); /* As all pins are on the same port, a single ISR is needed */
   pinMode(RC_CHANNEL_PIN, INPUT);
   digitalWrite(RC_CHANNEL_PIN, HIGH); /* Enable Pull-up to avoid floating inputs in case of nothing connected to them */
   TinyPinChange_EnablePin(RC_CHANNEL_PIN);
@@ -215,8 +215,8 @@ void loop()
 }
 /*
 RC Signal
-  ____                              ____
-_|    \____________________________/    \_
+  ____                              ____ 
+_|    |____________________________|    |_
  <---->
 Width_us
  <-------------------------------->
@@ -422,7 +422,7 @@ uint8_t IsInternalRcSrc()
 /* Function called in interruption in case of change on RC pins: pulse width and RC period measurement */
 void InterruptFunctionToCall(void)
 {
-  if(TinyPinChange_RisingEdge(0, RC_CHANNEL_PIN)) /* Check for RC Channel rising edge */
+  if(TinyPinChange_RisingEdge(VirtualPortIdx, RC_CHANNEL_PIN)) /* Check for RC Channel rising edge */
   {
     RcPeriod_us = micros() - Ch.RisingStartUs;
     Ch.RisingStartUs = micros();

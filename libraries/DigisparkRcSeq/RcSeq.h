@@ -84,14 +84,26 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
-#define SERVO_MAX_NB    10
-#define SEQUENCE_MAX_NB 8
-#define RC_CMD_MAX_NB   4
+#if defined(RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT)
+  #if defined(__AVR_ATtiny85__)
+    #define SERVO_MAX_NB      3 /* 3 is the maximum for DigiSpark if DigiUSB is used in the skecth */
+  #else
+    #if (defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny167__))
+      #define SERVO_MAX_NB    6
+    #else
+      #define SERVO_MAX_NB    10
+    #endif
+  #endif
 #else
-#define SERVO_MAX_NB    3 /* 3 is the maximum for DigiSpark if DigiUSB is used in the skecth */
-#define SEQUENCE_MAX_NB 1 /* 1 is the maximum for DigiSpark if DigiUSB is used in the skecth */
-#define RC_CMD_MAX_NB   0
+  #define SERVO_MAX_NB        0
+#endif
+
+#if (defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny85__) || defined(__AVR_ATtiny167__))
+  #define SEQUENCE_MAX_NB     4 /* 2 is the maximum for DigiSpark if DigiUSB is used in the skecth */
+  #define RC_CMD_MAX_NB       2
+#else
+    #define SEQUENCE_MAX_NB   10
+    #define RC_CMD_MAX_NB     4
 #endif
 
 typedef struct {
