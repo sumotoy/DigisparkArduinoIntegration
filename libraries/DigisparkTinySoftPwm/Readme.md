@@ -30,7 +30,7 @@ The **TinySoftPwm_process()** method shall be called periodically:
 * using micros() in the loop(): in this case, asynchronous programmation shall be used: no call to blocking functions such as delay() is permtitted.
 * or better using periodic interruption.
 
-In order to reduce the memory footprint, try to use the PWM on pins which are part of the same port PORTA or PORTB.
+In order to reduce the memory footprint (programm and RAM), try to use the PWM on pins which are part of the same port PORTA or PORTB.
 
 Contact
 -------
