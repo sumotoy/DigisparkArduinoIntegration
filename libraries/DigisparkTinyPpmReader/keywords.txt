@@ -1,0 +1,22 @@
+#######################################
+# Syntax Coloring Map TinyPpmReader
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+TinyPpmReader	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+TinyPpmReader_Init	KEYWORD2
+TinyPpmReader_DetectedChannelNb	KEYWORD2
+TinyPpmReader_Width_us	KEYWORD2
+TinyPpmReader_IsSynchro	KEYWORD2
+TinyPpmReader_Suspend	KEYWORD2
+TinyPpmReader_Resume	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
