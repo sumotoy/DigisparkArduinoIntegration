@@ -25,7 +25,7 @@
 /* Public function prototypes */
 void     TinyPpmReader_Init(uint8_t PpmInputPin);
 uint8_t  TinyPpmReader_DetectedChannelNb(void);
-uint16_t TinyPpmReader_Width_us(uint8_t ChIdx);
+uint16_t TinyPpmReader_Width_us(uint8_t Ch);
 uint8_t  TinyPpmReader_IsSynchro(void);
 void     TinyPpmReader_Suspend(void);
 void     TinyPpmReader_Resume(void);

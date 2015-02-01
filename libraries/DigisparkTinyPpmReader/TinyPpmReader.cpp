@@ -81,14 +81,16 @@ uint8_t TinyPpmReader_DetectedChannelNb(void)
   return(ChannelNb);
 }
 
-uint16_t TinyPpmReader_Width_us(uint8_t ChIdx)
+uint16_t TinyPpmReader_Width_us(uint8_t Ch)
 {
-  uint16_t Width_us;
-  
-  cli();
-  Width_us = ChWidthUs[ChIdx];
-  sei();
-  
+  uint16_t Width_us = 0;
+  if(Ch >= 1 && Ch <= TinyPpmReader_DetectedChannelNb())
+  {
+    Ch--;
+    cli();
+    Width_us = ChWidthUs[Ch];
+    sei();
+  }
   return(Width_us);
 }
 

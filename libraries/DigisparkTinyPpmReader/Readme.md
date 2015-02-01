@@ -28,9 +28,9 @@ With:
 	* **_PpmInputPin_**: The PPM input pin. The modulation can be _Positive_ or _Negative_: it doesn't matter, since sampling on rising edges or on falling edges is equivalent. 
 
 * **TinyPpmReader_DetectedChannelNb()**: returns the number of detected RC channels in the PPM frame.
-* **uint16_t TinyPpmReader_Width_us(uint8_t _ChIdx_)**:
+* **uint16_t TinyPpmReader_Width_us(uint8_t _Ch_)**:
 With:
-	* **_ChIdx_**: The Channel index (from 1 to Detected Channel Number).
+	* **_Ch_**: The Channel (from 1 to Detected Channel Number).
 	* Returns the requested channel pulse width in µs
 
 * **TinyPpmReader_IsSynchro()**:
@@ -43,7 +43,7 @@ With:
 
 Design considerations:
 ---------------------
-As this library relies on **TinyPinChange** library, see **TinyPinChange** library to check for the supported input pins depending of the target: for example, not all the arduino MEGA pins are support pin change interrupt.
+As this library relies on **TinyPinChange** library, see **TinyPinChange** library to check for the supported input pins depending of the target: for example, not all the arduino MEGA pins are supported pin change interrupt.
 
 
 Contact
