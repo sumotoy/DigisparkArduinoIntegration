@@ -1,7 +1,7 @@
 /********************************************************************************/
 /* PROJECT:   All based on ATtinyX5, ATtinyX4, Atiny167, ATmega328P, ATmega2560 */
 /* MODULE:    TinyPinChange                                                     */
-/* VERSION:   1.2 (20/12/2014)                                                  */
+/* VERSION:   1.3 (01/02/2015)                                                  */
 /* DATE:      30/01/2011                                                        */
 /* TARGET:    ATtinyX5, ATtinyX4, ATtiny167, ATmega328P, ATmega2560             */
 /* COMPILER:  WinAvr, avr-gcc, avr-g++                                          */

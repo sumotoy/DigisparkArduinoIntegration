@@ -11,6 +11,7 @@
 *             Methods TinyPinChange_Edge(), TinyPinChange_RisingEdge(), TinyPinChange_FallingEdge() added
 *             TinyPinChange_GetPinEvent() replaced with TinyPinChange_GetPortEvent()
 *             TinyPinChange_GetPinCurSt() replaced with TinyPinChange_GetCurPortSt()
+* 01/02/2015: Fix a bug on TinyPinChange_FallingEdge() method
 */
 
 #if defined(ARDUINO) && ARDUINO >= 100
@@ -95,8 +96,8 @@ uint8_t TinyPinChange_GetPortEvent(uint8_t VirtualPortIdx);
 uint8_t TinyPinChange_GetCurPortSt(uint8_t VirtualPortIdx);
 #define TinyPinChange_PinToMsk(Pin)				_BV(digitalPinToPCMSKbit(Pin))
 #define TinyPinChange_Edge(VirtualPortIdx, Pin)		( TinyPinChange_GetPortEvent((VirtualPortIdx)) & TinyPinChange_PinToMsk((Pin)) )
-#define TinyPinChange_RisingEdge(VirtualPortIdx, Pin)		( TinyPinChange_GetPortEvent((VirtualPortIdx)) & TinyPinChange_PinToMsk((Pin)) &  TinyPinChange_GetCurPortSt((VirtualPortIdx)) ) 
-#define TinyPinChange_FallingEdge(VirtualPortIdx, Pin)		( TinyPinChange_GetPortEvent((VirtualPortIdx)) & TinyPinChange_PinToMsk((Pin)) & (TinyPinChange_GetCurPortSt((VirtualPortIdx) ^ 0xFF)) )
+#define TinyPinChange_RisingEdge(VirtualPortIdx, Pin)		( TinyPinChange_Edge(VirtualPortIdx, Pin) &   TinyPinChange_GetCurPortSt((VirtualPortIdx))  ) 
+#define TinyPinChange_FallingEdge(VirtualPortIdx, Pin)		( TinyPinChange_Edge(VirtualPortIdx, Pin) & (~TinyPinChange_GetCurPortSt((VirtualPortIdx))) )
 
 /*******************************************************/
 /* Application Programming Interface (API) en Francais */
