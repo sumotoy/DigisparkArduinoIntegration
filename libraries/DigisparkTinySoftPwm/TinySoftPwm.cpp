@@ -1,10 +1,11 @@
-// a Tiny optimized Software PWM Manager (all pins must be part of the same port)
+// a Tiny optimized Software PWM Manager (pins shall not be part of the same port anymore: now, they can be scattered)
 // Only resources RAM/Program Memory of used pins are declared in the code at compilation time.
 // based largely on Atmel's AVR136: Low-Jitter Multi-Channel Software PWM Application Note:
 // http://www.atmel.com/dyn/resources/prod_documents/doc8020.pdf
 // RC Navy 2013-2015
 // http://p.loussouarn.free.fr
-// 11/01/2015: Multi port support added for ATtiny167
+// 11/01/2015: Automated multi port support added for ATtiny167
+// 01/02/2015: Automated multi port support added for ATmega328p (UNO)
 
 #include <TinySoftPwm.h> 
 
@@ -43,11 +44,10 @@
 #define GET_PWM_PIN_PORT(RamIdx)                ((uint8_t)pgm_read_byte(&PwmPin[(RamIdx)].Port))
 #define GET_PWM_INV_MSK(RamIdx)                 ((uint8_t)pgm_read_byte(&PwmPin[(RamIdx)].InvMsk))
 
-
 typedef struct {
-  uint8_t Id;
-  uint8_t Port;
-  uint8_t InvMsk;
+  const uint8_t Id;
+  const uint8_t Port;
+  const uint8_t InvMsk;
 }SoftPwmPinSt_t;
 
 const SoftPwmPinSt_t PwmPin[] PROGMEM ={
@@ -69,7 +69,6 @@ const SoftPwmPinSt_t PwmPin[] PROGMEM ={
 #if (TINY_SOFT_PWM_USES_PIN5 == 1)
   {5,  digitalPinToPortIdx(5),  ~(1 << digitalPinToPortBit(5))},
 #endif
-#if defined (__AVR_ATtiny167__)
 #if (TINY_SOFT_PWM_USES_PIN6 == 1)
   {6,  digitalPinToPortIdx(6),  ~(1 << digitalPinToPortBit(6))},
 #endif  
@@ -91,6 +90,8 @@ const SoftPwmPinSt_t PwmPin[] PROGMEM ={
 #if (TINY_SOFT_PWM_USES_PIN12 == 1)
   {12, digitalPinToPortIdx(12), ~(1 << digitalPinToPortBit(12))},
 #endif
+#if (TINY_SOFT_PWM_USES_PIN13 == 1)
+  {13, digitalPinToPortIdx(13), ~(1 << digitalPinToPortBit(13))},
 #endif
 };
 
@@ -154,6 +155,9 @@ uint8_t oldSREG = SREG;
 #if (TINY_SOFT_PWM_USES_PIN12 == 1)
   TINY_SOFT_PWM_DECLARE_PIN(12);
 #endif
+#if (TINY_SOFT_PWM_USES_PIN13 == 1)
+  TINY_SOFT_PWM_DECLARE_PIN(13);
+#endif
   _TickMax = TickMax;
 #ifdef TINY_SOFT_PWM_PORT0
   Port0_PwmTo1 = Port0_PwmMask;
@@ -194,7 +198,7 @@ static uint8_t PwmToPwmMax(uint8_t Pwm)
 
 void TinySoftPwm_process(void) 
 {
-static uint8_t OvfCount=0xFF;
+static uint8_t OvfCount = 0xFF;
  
 #ifdef TINY_SOFT_PWM_PORT0
   Port0_PwmTo0 = (~Port0_PwmTo1) ^ Port0_PwmMask;
@@ -249,6 +253,9 @@ static uint8_t OvfCount=0xFF;
 #if (TINY_SOFT_PWM_CH_MAX >= 13)
     Compare[12] = PwmOrder[12];
 #endif   
+#if (TINY_SOFT_PWM_CH_MAX >= 14)
+    Compare[13] = PwmOrder[13];
+#endif   
 #ifdef TINY_SOFT_PWM_PORT0
     Port0_PwmTo1 = Port0_PwmMask; // set all port used pins high
 #endif
@@ -295,5 +302,8 @@ static uint8_t OvfCount=0xFF;
 #endif
 #if (TINY_SOFT_PWM_CH_MAX >= 13)
   if(Compare[12] == OvfCount) TINY_SOFT_PWM_CLEAR_PIN(12);
+#endif
+#if (TINY_SOFT_PWM_CH_MAX >= 14)
+  if(Compare[13] == OvfCount) TINY_SOFT_PWM_CLEAR_PIN(13);
 #endif
 }

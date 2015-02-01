@@ -1,13 +1,14 @@
 #ifndef TinySoftPwm_h
 #define TinySoftPwm_h
 
-// a Tiny optimized Software PWM Manager (all pins must be part of the same port)
+// a Tiny optimized Software PWM Manager (pins shall not be part of the same port anymore: now, they can be scattered)
 // Only resources RAM/Program Memory of used pins are declared in the code at compilation time.
 // based largely on Atmel's AVR136: Low-Jitter Multi-Channel Software PWM Application Note:
 // http://www.atmel.com/dyn/resources/prod_documents/doc8020.pdf
 // RC Navy 2013-2015
 // http://p.loussouarn.free.fr
 // 11/01/2015: Automated multi port support (at compilation time) added for ATtiny167
+// 01/02/2015: Automated Multi port support added for ATmega328p (UNO)
 
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
@@ -34,6 +35,7 @@
 #define TINY_SOFT_PWM_USES_PIN10
 #define TINY_SOFT_PWM_USES_PIN11
 #define TINY_SOFT_PWM_USES_PIN12
+#define TINY_SOFT_PWM_USES_PIN13
 
 
 /*******************************************************************/
@@ -47,6 +49,7 @@
 #undef TINY_SOFT_PWM_USES_PIN10
 #undef TINY_SOFT_PWM_USES_PIN11
 #undef TINY_SOFT_PWM_USES_PIN12
+#undef TINY_SOFT_PWM_USES_PIN13
 #endif
 
 #ifdef TINY_SOFT_PWM_USES_PIN0
@@ -140,13 +143,18 @@
 #define TINY_SOFT_PWM_USES_PIN12 0
 #endif
 
+#ifdef TINY_SOFT_PWM_USES_PIN13
+#undef TINY_SOFT_PWM_USES_PIN13
+#define TINY_SOFT_PWM_USES_PIN13 1
+#else
+#define TINY_SOFT_PWM_USES_PIN13 0
+#endif
 
-#define TINY_SOFT_PWM_CH_MAX     (TINY_SOFT_PWM_USES_PIN0 + TINY_SOFT_PWM_USES_PIN1 + TINY_SOFT_PWM_USES_PIN2 + \
-                                  TINY_SOFT_PWM_USES_PIN3 + TINY_SOFT_PWM_USES_PIN4 + TINY_SOFT_PWM_USES_PIN5 + \
-                                  TINY_SOFT_PWM_USES_PIN6 + TINY_SOFT_PWM_USES_PIN7 + TINY_SOFT_PWM_USES_PIN8 + \
-                                  TINY_SOFT_PWM_USES_PIN9 + TINY_SOFT_PWM_USES_PIN10+ TINY_SOFT_PWM_USES_PIN11+ \
-                                  TINY_SOFT_PWM_USES_PIN12)
-
+#define TINY_SOFT_PWM_CH_MAX     (TINY_SOFT_PWM_USES_PIN0  + TINY_SOFT_PWM_USES_PIN1 + TINY_SOFT_PWM_USES_PIN2 + \
+                                  TINY_SOFT_PWM_USES_PIN3  + TINY_SOFT_PWM_USES_PIN4 + TINY_SOFT_PWM_USES_PIN5 + \
+                                  TINY_SOFT_PWM_USES_PIN6  + TINY_SOFT_PWM_USES_PIN7 + TINY_SOFT_PWM_USES_PIN8 + \
+                                  TINY_SOFT_PWM_USES_PIN9  + TINY_SOFT_PWM_USES_PIN10+ TINY_SOFT_PWM_USES_PIN11+ \
+                                  TINY_SOFT_PWM_USES_PIN12 + TINY_SOFT_PWM_USES_PIN13)
 
 #if defined (__AVR_ATtiny85__)
 #define TINY_SOFT_PWM_USES_PORT0  0
@@ -165,13 +173,30 @@
 #ifndef digitalPinToPortIdx
 #define digitalPinToPortIdx(p)    (((p) >= 5 && (p) <= 12) ? (0) : (1))
 #endif
+#else
+/* Last supported target is assumed to be ATmega328p (UNO) */
+#define TINY_SOFT_PWM_USES_PORT0  (TINY_SOFT_PWM_USES_PIN0  || TINY_SOFT_PWM_USES_PIN1  || TINY_SOFT_PWM_USES_PIN2  || \
+                                   TINY_SOFT_PWM_USES_PIN3  || TINY_SOFT_PWM_USES_PIN4  || TINY_SOFT_PWM_USES_PIN5  || \
+                                   TINY_SOFT_PWM_USES_PIN6  || TINY_SOFT_PWM_USES_PIN7)
+#define TINY_SOFT_PWM_USES_PORT1  (TINY_SOFT_PWM_USES_PIN8  || TINY_SOFT_PWM_USES_PIN9  || TINY_SOFT_PWM_USES_PIN10 || \
+                                   TINY_SOFT_PWM_USES_PIN11 || TINY_SOFT_PWM_USES_PIN12 || TINY_SOFT_PWM_USES_PIN13)
+#ifndef digitalPinToPortIdx
+#define digitalPinToPortIdx(p)    (((p) <= 7 ) ? (0) : (1))
+#endif
 #endif
 #endif
 
 #if (TINY_SOFT_PWM_USES_PORT0 == 1)
+#ifdef PORTA /* Does not exist on UNO */
 #undef  TINY_SOFT_PWM_USES_PORT0
 #define TINY_SOFT_PWM_PORT0       PORTA
 #define TINY_SOFT_PWM_DDR0        DDRA
+#else
+/* ATmega328p (UNO) */
+#warning PORTD
+#define TINY_SOFT_PWM_PORT0       PORTD
+#define TINY_SOFT_PWM_DDR0        DDRD
+#endif
 #endif
 
 #if (TINY_SOFT_PWM_USES_PORT1 == 1)

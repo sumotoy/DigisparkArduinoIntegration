@@ -13,6 +13,7 @@ Supported Arduinos:
 ------------------
 * **ATtiny85 (Standalone or Digispark)** (up to 6 software PWM supported)
 * **ATtiny167 (Digispark pro)** (up to 13 software PWM supported)
+* **ATmega328P (UNO)** (up to 14 software PWM supported)
 
 API/methods:
 -----------
