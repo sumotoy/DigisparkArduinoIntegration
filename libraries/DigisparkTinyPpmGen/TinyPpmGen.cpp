@@ -1,10 +1,11 @@
-/* A tiny interrupt driven RC PPM frame generator library using compare match of the timer used for ms in the core
+/* A tiny interrupt driven RC PPM frame generator library using compare match of the timer used for ms in the arduino core
    Features:
-   - Uses Output Compare Channel A of Timer 0 (When used, disable PWM associated to Timer 0 -> Pin marked as "OC0A" shall be used as PPM Frame output (no other choice) 
+   - Uses Output Compare Channel A of the 8 bit Timer 0 (When used, disables PWM associated to Timer 0 -> Pin marked as "OC0A" shall be used as PPM Frame output (no other choice) 
    - Can generate a PPM Frame containing up to 8 RC Channels (600 -> 2000 us) or 7 RC Channels (600 -> 2400 us)
    - Positive or Negative Modulation supported
    - Constant PPM Frame period: 20 ms
    - No need to wait 20 ms to set the pulse width order for the channels, can be done at any time
+   - Synchronisation indicator for digital data transmission over PPM
    - Blocking fonctions such as delay() can be used in the loop() since it's an interrupt driven PPM generator
    - Supported devices:
        - ATtiny167  (Digispark pro: PPM output -> PA2 -> arduino pin#8)
@@ -120,6 +121,7 @@ typedef struct {
 
 /* Global variables */
 static volatile ChSt_t* Ch = NULL;
+static volatile uint8_t Synchro = 0;
 static volatile uint8_t StartOfFrame = 1;
 static volatile uint8_t _Idx = 0;
 static volatile uint8_t _ChMaxNb;
@@ -217,6 +219,16 @@ void TinyPpmGen_SetChWidth_us(uint8_t ChIdx, uint16_t Width_us)
   }
 }
 
+uint8_t TinyPpmGen_IsSynchro(void)
+{
+  uint8_t Ret;
+  
+  Ret = Synchro;
+  Synchro = 0;
+  
+  return(Ret);
+}
+
 SIGNAL(COMP_VECT)
 {
   if(StartOfFrame)
@@ -237,6 +249,7 @@ SIGNAL(COMP_VECT)
         Ch[Idx].Cur.Ovf = Ch[Idx].Next.Ovf;
         Ch[Idx].Cur.Rem = Ch[Idx].Next.Rem;
       }
+      Synchro = 1; /* OK: Widths loaded */
     }
     /* Generate Next Channel or Synchro */
     Ch[0].Cur.Ovf = Ch[_Idx].Cur.Ovf;
