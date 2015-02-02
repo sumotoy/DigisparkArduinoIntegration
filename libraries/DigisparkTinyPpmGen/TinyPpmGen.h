@@ -25,7 +25,7 @@
 
 /* Public function prototypes */
 uint8_t TinyPpmGen_Init(uint8_t PpmModu, uint8_t ChNb);
-void    TinyPpmGen_SetChWidth_us(uint8_t ChIdx, uint16_t Width_us);
+void    TinyPpmGen_SetChWidth_us(uint8_t Ch, uint16_t Width_us);
 uint8_t TinyPpmGen_IsSynchro(void);
 
 #endif

@@ -120,7 +120,7 @@ typedef struct {
 }ChSt_t;
 
 /* Global variables */
-static volatile ChSt_t* Ch = NULL;
+static volatile ChSt_t* RcCh = NULL;
 static volatile uint8_t Synchro = 0;
 static volatile uint8_t StartOfFrame = 1;
 static volatile uint8_t _Idx = 0;
@@ -133,8 +133,8 @@ uint8_t TinyPpmGen_Init(uint8_t PpmModu, uint8_t ChNb)
   uint8_t Idx;
 
   _ChMaxNb = (ChNb > 8)?8:ChNb; /* Max is 8 Channels for a PPM period of 20 ms */
-  Ch = (ChSt_t *)malloc(sizeof(ChSt_t) * (_ChMaxNb + 1)); /* + 1 for Synchro Channel */
-  Ok = (Ch != NULL);
+  RcCh = (ChSt_t *)malloc(sizeof(ChSt_t) * (_ChMaxNb + 1)); /* + 1 for Synchro Channel */
+  Ok = (RcCh != NULL);
   if (Ok)
   {
     for(Idx = 1; Idx <= _ChMaxNb; Idx++)
@@ -160,12 +160,12 @@ uint8_t TinyPpmGen_Init(uint8_t PpmModu, uint8_t ChNb)
   return(Ok);
 }
 
-void TinyPpmGen_SetChWidth_us(uint8_t ChIdx, uint16_t Width_us)
+void TinyPpmGen_SetChWidth_us(uint8_t Ch, uint16_t Width_us)
 {
   uint16_t TickNb, SumTick = 0, SynchTick;
   uint8_t  Ch_Next_Ovf, Ch_Next_Rem, Ch0_Next_Ovf, Ch0_Next_Rem;
 
-  if(ChIdx >= 1 && _ChMaxNb <= _ChMaxNb)
+  if((Ch >= 1) && (Ch <= _ChMaxNb))
   {
     TickNb = PPM_US_TO_TICK(Width_us - 256 + (MS_TIMER_TICK_DURATION_US / 2)); /* Convert in rounded Timer Ticks. 256: Should be normally around 300 us, but works fine with 256 us */
     Ch_Next_Ovf = (TickNb & 0xFF00) >> 8;
@@ -184,10 +184,10 @@ void TinyPpmGen_SetChWidth_us(uint8_t ChIdx, uint16_t Width_us)
     /* Update Synchro Time */
     for(uint8_t Idx = 1; Idx <= _ChMaxNb; Idx++)
     {
-      if(Idx != ChIdx)
+      if(Idx != Ch)
       {
-        SumTick += PPM_US_TO_TICK(256) + ((Ch[Idx].Cur.Ovf & FULL_OVF_MASK) << 8) + Ch[Idx].Next.Rem;
-        if(Ch[Idx].Cur.Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
+        SumTick += PPM_US_TO_TICK(256) + ((RcCh[Idx].Cur.Ovf & FULL_OVF_MASK) << 8) + RcCh[Idx].Next.Rem;
+        if(RcCh[Idx].Cur.Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
       }
       else
       {
@@ -211,10 +211,10 @@ void TinyPpmGen_SetChWidth_us(uint8_t ChIdx, uint16_t Width_us)
     }
     /* Update requested Channel AND Synchro to keep constant the period (20ms) */
     PPM_OCR_INT_DISABLE();
-    Ch[0].Next.Ovf = Ch0_Next_Ovf;
-    Ch[0].Next.Rem = Ch0_Next_Rem;
-    Ch[ChIdx].Next.Ovf = Ch_Next_Ovf;
-    Ch[ChIdx].Next.Rem = Ch_Next_Rem;
+    RcCh[0].Next.Ovf = Ch0_Next_Ovf;
+    RcCh[0].Next.Rem = Ch0_Next_Rem;
+    RcCh[Ch].Next.Ovf = Ch_Next_Ovf;
+    RcCh[Ch].Next.Rem = Ch_Next_Rem;
     PPM_OCR_INT_ENABLE(); 
   }
 }
@@ -246,37 +246,37 @@ SIGNAL(COMP_VECT)
       /* Reload new Channel values including Synchro */
       for(uint8_t Idx = 0; Idx <= _ChMaxNb; Idx++)
       {
-        Ch[Idx].Cur.Ovf = Ch[Idx].Next.Ovf;
-        Ch[Idx].Cur.Rem = Ch[Idx].Next.Rem;
+        RcCh[Idx].Cur.Ovf = RcCh[Idx].Next.Ovf;
+        RcCh[Idx].Cur.Rem = RcCh[Idx].Next.Rem;
       }
       Synchro = 1; /* OK: Widths loaded */
     }
     /* Generate Next Channel or Synchro */
-    Ch[0].Cur.Ovf = Ch[_Idx].Cur.Ovf;
-    Ch[0].Cur.Rem = Ch[_Idx].Cur.Rem;
+    RcCh[0].Cur.Ovf = RcCh[_Idx].Cur.Ovf;
+    RcCh[0].Cur.Rem = RcCh[_Idx].Cur.Rem;
     StartOfFrame = 0;
   }
   else
   {
     /* Do not change PPM_OCR to have a full Ovf */
-    if(Ch[0].Cur.Rem)
+    if(RcCh[0].Cur.Rem)
     {
-      PPM_OCR += Ch[0].Cur.Rem;  /* Remain to generate */
-      Ch[0].Cur.Rem = 0;
+      PPM_OCR += RcCh[0].Cur.Rem;  /* Remain to generate */
+      RcCh[0].Cur.Rem = 0;
     }
     else
     {
-      if(Ch[0].Cur.Ovf)
+      if(RcCh[0].Cur.Ovf)
       {
-        if(Ch[0].Cur.Ovf & HALF_OVF_MASK)
+        if(RcCh[0].Cur.Ovf & HALF_OVF_MASK)
         {
-          Ch[0].Cur.Ovf &= FULL_OVF_MASK;   /* Clear Half ovf indicator */
+          RcCh[0].Cur.Ovf &= FULL_OVF_MASK;   /* Clear Half ovf indicator */
           PPM_OCR += HALF_OVF_VAL; /* Half Overflow to generate */
         }
-        Ch[0].Cur.Ovf--;
+        RcCh[0].Cur.Ovf--;
       }
     }
-    if(!Ch[0].Cur.Ovf && !Ch[0].Cur.Rem)
+    if(!RcCh[0].Cur.Ovf && !RcCh[0].Cur.Rem)
     {
       TOGGLE_PPM_PIN_ENABLE();
       StartOfFrame = 1;

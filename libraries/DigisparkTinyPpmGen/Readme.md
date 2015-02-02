@@ -28,9 +28,9 @@ With:
 	* **_PpmModu_**: **TINY_PPM_GEN_POS_MOD** or **TINY_PPM_GEN_NEG_MOD** for respectiveley positive and negative PPM modulation
 	* **_ChNb_**: The number of RC channel to transport in the PPM frame (1 to 8)
 
-* **TinyPpmGen_SetChWidth_us(uint8_t _ChIdx_, uint16_t _Width_us_)**
+* **TinyPpmGen_SetChWidth_us(uint8_t _Ch_, uint16_t _Width_us_)**
 With:
-	* **_ChIdx_**: the RC channel (1 to _ChNb_)
+	* **_Ch_**: the RC channel (1 to _ChNb_)
 	* **_Width_us_**: the pulse width in µs
 
 * **TinyPpmGen_IsSynchro()**:
