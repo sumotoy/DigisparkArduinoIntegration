@@ -4,7 +4,7 @@ by RC Navy (http://p.loussouarn.free.fr/arduino/arduino.html) 2015
 This sketch reads an RC PPM frame, extracts the numbers of channels and their pulse witdhs and substitutes the 4th channel with a fix pulse width (2000 us).
 This sketch can work with a Digispark pro, Digispark, Arduino UNO...
 The PPM input shall support pin change interrupt.
- The PPM input pin is target dependant and shall be:
+The PPM output pin is target dependant and shall be:
        - ATtiny167  (Digispark pro: PPM output -> PA2 -> arduino pin#8)
        - ATtiny85   (Digispark:     PPM output -> PB0 -> arduino pin#0)
        - ATmega328P (Arduino UNO:   PPM output -> PD6 -> arduino pin#6)
