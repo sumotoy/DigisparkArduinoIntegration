@@ -11,20 +11,22 @@ This example code is in the public domain.
 
 #define PPM_INPUT_PIN  2
 
+TinyPpmReader MyPpmReader; /* Create a TinyPpmReader object */
+
 void setup()
 {
-  TinyPpmReader_Init(PPM_INPUT_PIN);
   Serial.begin(115200);
+  MyPpmReader.attach(PPM_INPUT_PIN); /* Attach MyPpmReader to PPM_INPUT_PIN pin */
 }
 
 void loop()
 {
-  TinyPpmReader_Suspend(); /* Not needed if an hardware serial is used to display results */
-  Serial.print(F("ChNb="));Serial.println((int)TinyPpmReader_DetectedChannelNb());
-  for(uint8_t Idx = 0; Idx < TinyPpmReader_DetectedChannelNb(); Idx++)
+  MyPpmReader.suspend(); /* Not needed if an hardware serial is used to display results */
+  Serial.print(F("ChNb="));Serial.println((int)MyPpmReader.detectedChannelNb());
+  for(uint8_t Idx = 1; Idx <= MyPpmReader.detectedChannelNb(); Idx++) /* From Channel 1 to Max detected */
   {
-    Serial.println(TinyPpmReader_Width_us(Idx));
+    Serial.println(MyPpmReader.width_us(Idx));
   }
-  TinyPpmReader_Resume(); /* Not needed if an hardware serial is used to display results */
+  MyPpmReader.resume(); /* Not needed if an hardware serial is used to display results */
   delay(500);
 }

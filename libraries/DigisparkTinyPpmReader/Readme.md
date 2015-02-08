@@ -9,6 +9,7 @@ Some examples of use cases:
 -------------------------
 * **Standalone RC PPM reader**
 * **Channel substitution in an existing PPM frame** (in conjunction with  **TinyPpmGen** library)
+* **Channels addition to an existing PPM frame**: eg. read 4 channels and generate 6 channels (in conjunction with  **TinyPpmGen** library)
 * **Digital data transmission over PPM** (in conjunction with  **TinyPpmGen** library)
 
 Supported Arduinos:
@@ -23,22 +24,25 @@ Develop your project on an arduino UNO, and then shrink it by loading the sketch
 
 API/methods:
 -----------
-* **TinyPpmReader_Init(uint8_t _PpmInputPin_)**
-With:
-	* **_PpmInputPin_**: The PPM input pin. The modulation can be _Positive_ or _Negative_: it doesn't matter, since sampling on rising edges or on falling edges is equivalent. 
+* **TinyPpmReader**: The object constructor
 
-* **TinyPpmReader_DetectedChannelNb()**: returns the number of detected RC channels in the PPM frame.
-* **uint16_t TinyPpmReader_Width_us(uint8_t _Ch_)**:
+* **uint8_t attach(uint8_t _PpmInputPin_)**: attach the TinyPpmReader object to a pin.
+With:
+	* **_PpmInputPin_**: The PPM input pin. The modulation can be _Positive_ or _Negative_: it doesn't matter, since sampling on rising edges or on falling edges is equivalent.
+	* Returns 1 in case of success, and 0 if the _PpmInputPin_ doesn't support pin change interrupt (unusable pin).
+
+* **uint8_t detectedChannelNb()**: returns the number of detected RC channels in the PPM frame.
+* **uint16_t width_us(uint8_t _Ch_)**:
 With:
 	* **_Ch_**: The Channel (from 1 to Detected Channel Number).
 	* Returns the requested channel pulse width in µs
 
-* **TinyPpmReader_IsSynchro()**:
+* **uint8_t isSynchro()**:
 	* PPM Synchronization indicator: indicates that the largest pulse value (Synchro) has just been received. This is a "clear on read" fonction (no need to clear explicitely the indicator).
 
-* **TinyPpmReader_Suspend()**: supends the PPM acquisition. This can be useful whilst displaying results through a software serial port which disables interrupts during character transmission.
+* **suspend()**: supends the PPM acquisition. This can be useful whilst displaying results through a software serial port which disables interrupts during character transmission.
 
-* **TinyPpmReader_Resume()**: resumes the PPM acquisition.
+* **resume()**: resumes the PPM acquisition.
 
 
 Design considerations:
