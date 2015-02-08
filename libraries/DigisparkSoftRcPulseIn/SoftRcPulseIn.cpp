@@ -31,19 +31,19 @@ SoftRcPulseIn::SoftRcPulseIn(void)
 
 uint8_t SoftRcPulseIn::attach(uint8_t Pin, uint16_t PulseMin_us/*=600*/, uint16_t PulseMax_us/*=2400*/)
 {
-uint8_t Ret=0;
+uint8_t Ret = 0;
 
-	_Pin=Pin;
-	_PinMask = TinyPinChange_PinToMsk(Pin);
-	_Min_us = PulseMin_us;
-	_Max_us = PulseMax_us;
-	next = first;
-	first = this;
-	pinMode(_Pin,INPUT);
-	digitalWrite(_Pin, HIGH);
-	_VirtualPortIdx = TinyPinChange_RegisterIsr(_Pin, SoftRcPulseIn::SoftRcPulseInInterrupt);
+	_VirtualPortIdx = TinyPinChange_RegisterIsr(Pin, SoftRcPulseIn::SoftRcPulseInInterrupt);
 	if(_VirtualPortIdx >= 0)
 	{
+	  _Pin=Pin;
+	  _PinMask = TinyPinChange_PinToMsk(Pin);
+	  _Min_us  = PulseMin_us;
+	  _Max_us  = PulseMax_us;
+	  next  = first;
+	  first = this;
+	  pinMode(_Pin,INPUT);
+	  digitalWrite(_Pin, HIGH);
 	  TinyPinChange_EnablePin(_Pin);
 	  Ret=1;
 	}
