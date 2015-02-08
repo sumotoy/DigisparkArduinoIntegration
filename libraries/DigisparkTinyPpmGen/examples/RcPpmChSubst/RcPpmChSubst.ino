@@ -16,19 +16,21 @@ This example code is in the public domain.
 
 #define PPM_INPUT_PIN  2
 
+TinyPpmReader MyPpmReader;  /* Create a TinyPpmReader object */
+
 void setup()
 {
-  TinyPpmReader_Init(PPM_INPUT_PIN);
-  TinyPpmGen_Init(TINY_PPM_GEN_POS_MOD, 4); /* Change TINY_PPM_GEN_POS_MOD to TINY_PPM_GEN_NEG_MOD for NEGative PPM modulation */
+  TinyPpmGen.begin(TINY_PPM_GEN_POS_MOD, 4); /* Change TINY_PPM_GEN_POS_MOD to TINY_PPM_GEN_NEG_MOD for NEGative PPM modulation */
+  MyPpmReader.attach(PPM_INPUT_PIN); /* Attach MyPpmReader to PPM_INPUT_PIN pin */
 }
 
 void loop()
 {
-  if((TinyPpmReader_DetectedChannelNb() >= 4) && TinyPpmReader_IsSynchro())
+  if((MyPpmReader.detectedChannelNb() >= 4) && MyPpmReader.isSynchro())
   {
-    TinyPpmGen_SetChWidth_us(1, TinyPpmReader_Width_us(1)); /* RC Channel#1: forward rx value */
-    TinyPpmGen_SetChWidth_us(2, TinyPpmReader_Width_us(2)); /* RC Channel#2: forward rx value */
-    TinyPpmGen_SetChWidth_us(3, TinyPpmReader_Width_us(3)); /* RC Channel#3 forward rx value: */
-    TinyPpmGen_SetChWidth_us(4, 2000); /* RC Channel#4: replace rx pulse width with 2000 us */
+    TinyPpmGen.setChWidth_us(1, MyPpmReader.width_us(1)); /* RC Channel#1: forward rx value */
+    TinyPpmGen.setChWidth_us(2, MyPpmReader.width_us(2)); /* RC Channel#2: forward rx value */
+    TinyPpmGen.setChWidth_us(3, MyPpmReader.width_us(3)); /* RC Channel#3 forward rx value: */
+    TinyPpmGen.setChWidth_us(4, 2000); /* RC Channel#4: replace rx pulse width with 2000 us */
   }
 }

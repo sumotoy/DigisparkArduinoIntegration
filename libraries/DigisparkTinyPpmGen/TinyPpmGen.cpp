@@ -27,24 +27,28 @@
 
 #define MS_TIMER_TICK_DURATION_US  (MS_TIMER_TICK_EVERY_X_CYCLES / clockCyclesPerMicrosecond())
 
+#if (F_CPU == 16500000)
+#define PPM_US_TO_TICK(Us)         (((Us) + ((Us) >> 5)) / MS_TIMER_TICK_DURATION_US) /* Correction for Digispark at 16.5 MHz */
+#else
 #define PPM_US_TO_TICK(Us)         ((Us) / MS_TIMER_TICK_DURATION_US)
+#endif
 
 #ifdef __AVR_ATtiny167__
 #define PPM_OCR_PORT               PORTA
 #define PPM_OCR_PIN                PINA
-#define PPM_OCR_PIN_MSK            (1<<2) /* PA2 */
+#define PPM_OCR_PIN_MSK            (1 << 2) /* PA2 */
 #define PPM_OCR_DDR                DDRA
 #else
 #ifdef  __AVR_ATtiny85__
 #define PPM_OCR_PORT               PORTB
 #define PPM_OCR_PIN                PINB
-#define PPM_OCR_PIN_MSK            (1<<0) /* PB0 */
+#define PPM_OCR_PIN_MSK            (1 << 0) /* PB0 */
 #define PPM_OCR_DDR                DDRB
 #else
 /* Last supported target is assumed to be Atmega328p (UNO) */
 #define PPM_OCR_PORT               PORTD
 #define PPM_OCR_PIN                PIND
-#define PPM_OCR_PIN_MSK            (1<<6) /* PD6 */
+#define PPM_OCR_PIN_MSK            (1 << 6) /* PD6 */
 #define PPM_OCR_DDR                DDRD
 #endif
 #endif
@@ -120,26 +124,33 @@ typedef struct {
 }ChSt_t;
 
 /* Global variables */
-static volatile ChSt_t* RcCh = NULL;
-static volatile uint8_t Synchro = 0;
-static volatile uint8_t StartOfFrame = 1;
+static volatile ChSt_t* _Ch = NULL;
+static volatile uint8_t _Synchro = 0;
+static volatile uint8_t _StartOfFrame = 1;
 static volatile uint8_t _Idx = 0;
 static volatile uint8_t _ChMaxNb;
 
+OneTinyPpmGen TinyPpmGen = OneTinyPpmGen();
+
 /* Public functions */
-uint8_t TinyPpmGen_Init(uint8_t PpmModu, uint8_t ChNb)
+OneTinyPpmGen::OneTinyPpmGen(void) /* Constructor */
+{
+  
+}
+
+uint8_t OneTinyPpmGen::begin(uint8_t PpmModu, uint8_t ChNb)
 {
   boolean Ok = false;
   uint8_t Idx;
 
   _ChMaxNb = (ChNb > 8)?8:ChNb; /* Max is 8 Channels for a PPM period of 20 ms */
-  RcCh = (ChSt_t *)malloc(sizeof(ChSt_t) * (_ChMaxNb + 1)); /* + 1 for Synchro Channel */
-  Ok = (RcCh != NULL);
+  _Ch = (ChSt_t *)malloc(sizeof(ChSt_t) * (_ChMaxNb + 1)); /* + 1 for Synchro Channel */
+  Ok = (_Ch != NULL);
   if (Ok)
   {
     for(Idx = 1; Idx <= _ChMaxNb; Idx++)
     {
-      TinyPpmGen_SetChWidth_us(Idx, PPM_NEUTRAL_US); /* Set all channels to Neutral */
+      OneTinyPpmGen::setChWidth_us(Idx, PPM_NEUTRAL_US); /* Set all channels to Neutral */
     }
     /* Set Pin as Output according to the PPM modulation level */
     PPM_OCR_DDR |= PPM_OCR_PIN_MSK; /* Set pin as output */
@@ -160,7 +171,7 @@ uint8_t TinyPpmGen_Init(uint8_t PpmModu, uint8_t ChNb)
   return(Ok);
 }
 
-void TinyPpmGen_SetChWidth_us(uint8_t Ch, uint16_t Width_us)
+void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
 {
   uint16_t TickNb, SumTick = 0, SynchTick;
   uint8_t  Ch_Next_Ovf, Ch_Next_Rem, Ch0_Next_Ovf, Ch0_Next_Rem;
@@ -186,8 +197,8 @@ void TinyPpmGen_SetChWidth_us(uint8_t Ch, uint16_t Width_us)
     {
       if(Idx != Ch)
       {
-        SumTick += PPM_US_TO_TICK(256) + ((RcCh[Idx].Cur.Ovf & FULL_OVF_MASK) << 8) + RcCh[Idx].Next.Rem;
-        if(RcCh[Idx].Cur.Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
+        SumTick += PPM_US_TO_TICK(256) + ((_Ch[Idx].Cur.Ovf & FULL_OVF_MASK) << 8) + _Ch[Idx].Next.Rem;
+        if(_Ch[Idx].Cur.Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
       }
       else
       {
@@ -211,27 +222,27 @@ void TinyPpmGen_SetChWidth_us(uint8_t Ch, uint16_t Width_us)
     }
     /* Update requested Channel AND Synchro to keep constant the period (20ms) */
     PPM_OCR_INT_DISABLE();
-    RcCh[0].Next.Ovf = Ch0_Next_Ovf;
-    RcCh[0].Next.Rem = Ch0_Next_Rem;
-    RcCh[Ch].Next.Ovf = Ch_Next_Ovf;
-    RcCh[Ch].Next.Rem = Ch_Next_Rem;
+    _Ch[0].Next.Ovf = Ch0_Next_Ovf;
+    _Ch[0].Next.Rem = Ch0_Next_Rem;
+    _Ch[Ch].Next.Ovf = Ch_Next_Ovf;
+    _Ch[Ch].Next.Rem = Ch_Next_Rem;
     PPM_OCR_INT_ENABLE(); 
   }
 }
 
-uint8_t TinyPpmGen_IsSynchro(void)
+uint8_t OneTinyPpmGen::isSynchro(uint8_t SynchroClientMsk /*= TINY_PPM_GEN_CLIENT(7)*/)
 {
   uint8_t Ret;
   
-  Ret = Synchro;
-  Synchro = 0;
+  Ret = !!(_Synchro & SynchroClientMsk);
+  _Synchro &= ~SynchroClientMsk; /* Clear indicator for the Synchro client */
   
   return(Ret);
 }
 
 SIGNAL(COMP_VECT)
 {
-  if(StartOfFrame)
+  if(_StartOfFrame)
   {
      /* Modify PPM_OCR only if Tick > 1 us */
 #if (MS_TIMER_TICK_DURATION_US > 1)
@@ -246,40 +257,40 @@ SIGNAL(COMP_VECT)
       /* Reload new Channel values including Synchro */
       for(uint8_t Idx = 0; Idx <= _ChMaxNb; Idx++)
       {
-        RcCh[Idx].Cur.Ovf = RcCh[Idx].Next.Ovf;
-        RcCh[Idx].Cur.Rem = RcCh[Idx].Next.Rem;
+        _Ch[Idx].Cur.Ovf = _Ch[Idx].Next.Ovf;
+        _Ch[Idx].Cur.Rem = _Ch[Idx].Next.Rem;
       }
-      Synchro = 1; /* OK: Widths loaded */
+      _Synchro = 0xFF; /* OK: Widths loaded */
     }
     /* Generate Next Channel or Synchro */
-    RcCh[0].Cur.Ovf = RcCh[_Idx].Cur.Ovf;
-    RcCh[0].Cur.Rem = RcCh[_Idx].Cur.Rem;
-    StartOfFrame = 0;
+    _Ch[0].Cur.Ovf = _Ch[_Idx].Cur.Ovf;
+    _Ch[0].Cur.Rem = _Ch[_Idx].Cur.Rem;
+    _StartOfFrame = 0;
   }
   else
   {
     /* Do not change PPM_OCR to have a full Ovf */
-    if(RcCh[0].Cur.Rem)
+    if(_Ch[0].Cur.Rem)
     {
-      PPM_OCR += RcCh[0].Cur.Rem;  /* Remain to generate */
-      RcCh[0].Cur.Rem = 0;
+      PPM_OCR += _Ch[0].Cur.Rem;  /* Remain to generate */
+      _Ch[0].Cur.Rem = 0;
     }
     else
     {
-      if(RcCh[0].Cur.Ovf)
+      if(_Ch[0].Cur.Ovf)
       {
-        if(RcCh[0].Cur.Ovf & HALF_OVF_MASK)
+        if(_Ch[0].Cur.Ovf & HALF_OVF_MASK)
         {
-          RcCh[0].Cur.Ovf &= FULL_OVF_MASK;   /* Clear Half ovf indicator */
+          _Ch[0].Cur.Ovf &= FULL_OVF_MASK;   /* Clear Half ovf indicator */
           PPM_OCR += HALF_OVF_VAL; /* Half Overflow to generate */
         }
-        RcCh[0].Cur.Ovf--;
+        _Ch[0].Cur.Ovf--;
       }
     }
-    if(!RcCh[0].Cur.Ovf && !RcCh[0].Cur.Rem)
+    if(!_Ch[0].Cur.Ovf && !_Ch[0].Cur.Rem)
     {
       TOGGLE_PPM_PIN_ENABLE();
-      StartOfFrame = 1;
+      _StartOfFrame = 1;
     }
     else
     {

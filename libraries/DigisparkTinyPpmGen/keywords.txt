@@ -10,10 +10,12 @@ TinyPpmGen	KEYWORD1
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
-TinyPpmGen_Init	KEYWORD2
-TinyPpmGen_SetChWidth_us	KEYWORD2
-TinyPpmGen_IsSynchro	KEYWORD2
+begin	KEYWORD2
+setChWidth_us	KEYWORD2
+isSynchro	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
 #######################################
+TINY_PPM_GEN_POS_MOD	LITERAL1
+TINY_PPM_GEN_NEG_MOD	LITERAL1

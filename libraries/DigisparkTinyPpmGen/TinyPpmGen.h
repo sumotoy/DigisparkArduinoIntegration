@@ -22,10 +22,19 @@
 #define TINY_PPM_GEN_POS_MOD          HIGH
 #define TINY_PPM_GEN_NEG_MOD          LOW
 
+#define TINY_PPM_GEN_CLIENT(ClientIdx)         (1 << (ClientIdx)) /* Range: 0 to 7 */
 
-/* Public function prototypes */
-uint8_t TinyPpmGen_Init(uint8_t PpmModu, uint8_t ChNb);
-void    TinyPpmGen_SetChWidth_us(uint8_t Ch, uint16_t Width_us);
-uint8_t TinyPpmGen_IsSynchro(void);
+class OneTinyPpmGen
+{
+  private:
+    // static data
+  public:
+    OneTinyPpmGen(void);
+    uint8_t begin(uint8_t PpmModu, uint8_t ChNb);
+    void    setChWidth_us(uint8_t Ch, uint16_t Width_us);
+    uint8_t isSynchro(uint8_t SynchroClientMsk = TINY_PPM_GEN_CLIENT(7)); /* Default value: 8th Synchro client -> 0 to 6 free for other clients*/
+};
+
+extern OneTinyPpmGen TinyPpmGen;                 //Object externalisation
 
 #endif

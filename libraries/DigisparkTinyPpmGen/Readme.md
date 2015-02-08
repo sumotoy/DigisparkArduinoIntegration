@@ -8,7 +8,7 @@ This PPM generator can transport up to 8 RC channels and supports positive and n
 Some examples of use cases:
 -------------------------
 * **Standalone RC PPM generator**
-* **Channel substitution in an existing PPM frame**
+* **Channel substitution and/or addition in an existing PPM frame**
 * **Digital data transmission over PPM**
 
 Supported Arduinos:
@@ -23,17 +23,17 @@ Develop your project on an arduino UNO, and then shrink it by loading the sketch
 
 API/methods:
 -----------
-* **TinyPpmGen_Init(uint8_t _PpmModu_, uint8_t _ChNb_)**
+* **TinyPpmGen.begin(uint8_t _PpmModu_, uint8_t _ChNb_)**
 With:
 	* **_PpmModu_**: **TINY_PPM_GEN_POS_MOD** or **TINY_PPM_GEN_NEG_MOD** for respectiveley positive and negative PPM modulation
 	* **_ChNb_**: The number of RC channel to transport in the PPM frame (1 to 8)
 
-* **TinyPpmGen_SetChWidth_us(uint8_t _Ch_, uint16_t _Width_us_)**
+* **TinyPpmGen.setChWidth_us(uint8_t _Ch_, uint16_t _Width_us_)**
 With:
 	* **_Ch_**: the RC channel (1 to _ChNb_)
 	* **_Width_us_**: the pulse width in µs
 
-* **TinyPpmGen_IsSynchro()**:
+* **uint8_t TinyPpmGen.isSynchro()**:
 	* PPM Synchronization indicator: indicates that the pulse values have just been recorded for the current PPM frame generation and gives 20 ms for preparing next pulse widths. This allows to pass digital information over PPM (one different pulse width per PPM frame). This is a "clear on read" fonction (no need to clear explicitely the indicator).
 
 Design considerations:
