@@ -1,21 +1,57 @@
-/* A tiny interrupt driven RC PPM frame generator library using compare match of the timer used for ms in the arduino core
+/* A tiny interrupt driven RC PPM frame generator library using compare match of a 8 bits timer (timer used for ms in the arduino core can be reused)
    Features:
-   - Uses Output Compare Channel A of the 8 bit Timer 0 (When used, disables PWM associated to Timer 0 -> Pin marked as "OC0A" shall be used as PPM Frame output (no other choice) 
+   - Uses Output Compare Channel A or B of the 8 bit Timer 0, 1 or 2. When used, it disables associated PWM -> Pin marked as "OCxy" shall be used as PPM Frame output (no other choice) 
    - Can generate a PPM Frame containing up to 8 RC Channels (600 -> 2000 us) or 7 RC Channels (600 -> 2400 us)
    - Positive or Negative Modulation supported
    - Constant PPM Frame period: 20 ms
    - No need to wait 20 ms to set the pulse width order for the channels, can be done at any time
    - Synchronisation indicator for digital data transmission over PPM
    - Blocking fonctions such as delay() can be used in the loop() since it's an interrupt driven PPM generator
-   - Supported devices:
-       - ATtiny167  (Digispark pro: PPM output -> PA2 -> arduino pin#8)
-       - ATtiny85   (Digispark:     PPM output -> PB0 -> arduino pin#0)
-       - ATmega328P (Arduino UNO:   PPM output -> PD6 -> arduino pin#6)
+   - Supported devices: (The user has to define Timer and Channel to use in TinyPpmGen.h file of the library)
+       - ATtiny167 (Digispark pro):
+         TIMER(0), CHANNEL(A) -> OC0A -> PB0 -> Pin#0
+
+       - ATtiny85 (Digispark):
+         TIMER(0), CHANNEL(A) -> OC0A -> PB0 -> Pin#0
+         TIMER(0), CHANNEL(B) -> OC0B -> PB1 -> Pin#1
+         TIMER(1), CHANNEL(A) -> OC1A -> PB1 -> Pin#1
+         
+       - ATmega328P (Arduino UNO):
+         TIMER(0), CHANNEL(A) -> OC0A -> PD6 -> Pin#6
+         TIMER(0), CHANNEL(B) -> OC0B -> PD5 -> Pin#5
+         TIMER(2), CHANNEL(A) -> OC2A -> PB3 -> Pin#11
+         TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3
+         
    RC Navy 2015
    http://p.loussouarn.free.fr
    31/01/2015: Creation
+   14/02/2015: Timer and Channel choices added
 */
 #include <TinyPpmGen.h>
+
+/********************************************************************************************/
+/* Timer selection (0, 1 or 2) AND Channel selection (A or B) SHALL be done in TinyPpmGen.h */
+/********************************************************************************************/
+/* /!\ Do NOT change below /!\ */
+#if (OC_CHANNEL == CHANNEL(A))
+#define OC_CHANNEL_LETTER          A
+#else
+#define OC_CHANNEL_LETTER          B
+#endif
+
+/* Macro for concatenation */
+#define CONCAT2_(a, b)             a##b
+#define CONCAT2(a, b)              CONCAT2_(a, b)
+
+#define CONCAT3_(a, b, c)          a##b##c
+#define CONCAT3(a, b, c)           CONCAT3_(a, b, c)
+
+#define CONCAT4_(a, b, c, d)       a##b##c##d
+#define CONCAT4(a, b, c, d)        CONCAT4_(a, b, c, d)
+
+#define CONCAT5_(a, b, c, d, e)    a##b##c##d##e
+#define CONCAT5(a, b, c, d, e)     CONCAT5_(a, b, c, d, e)
+
 
 #ifndef MS_TIMER_TICK_EVERY_X_CYCLES /* SYMBOL introduced to the modified arduino distribution for Digispark */
 #define MS_TIMER_TICK_EVERY_X_CYCLES 64 /* Default value for regular arduino distribution */
@@ -34,50 +70,103 @@
 #endif
 
 #ifdef __AVR_ATtiny167__
-#define PPM_OCR_PORT               PORTA
-#define PPM_OCR_PIN                PINA
-#define PPM_OCR_PIN_MSK            (1 << 2) /* PA2 */
-#define PPM_OCR_DDR                DDRA
+#if ((OC_TIMER == TIMER(0)) && (OC_CHANNEL == CHANNEL(A)))
+#define PPM_WF_REG                 CONCAT3(TCCR,  OC_TIMER, A)
+#define PPM_CS_REG                 CONCAT3(TCCR,  OC_TIMER, B)
+#define PPM_CM_REG                 CONCAT3(TCCR,  OC_TIMER, A)
+#define PPM_FORCE_REG              CONCAT3(TCCR,  OC_TIMER, B)
+#define TIM_MODE_NORMAL()          (PPM_WF_REG &= ~(_BV(WGM01) | _BV(WGM00)));(PPM_CS_REG = _BV(CS02))
+#define PPM_OC_INT_MSK_REG         TIMSK0
+#define PPM_PORT                   A
+#define PIN_BIT                    2
+#else
+#error TinyPpmGen SHALL use Timer0 and ChannelA for ATtiny167 !!!
+#endif
 #else
 #ifdef  __AVR_ATtiny85__
-#define PPM_OCR_PORT               PORTB
-#define PPM_OCR_PIN                PINB
-#define PPM_OCR_PIN_MSK            (1 << 0) /* PB0 */
-#define PPM_OCR_DDR                DDRB
+#if (OC_TIMER == TIMER(0))
+  #define PPM_WF_REG               CONCAT3(TCCR,  OC_TIMER, A)
+  #define PPM_CS_REG               CONCAT3(TCCR,  OC_TIMER, B)
+  #define PPM_CM_REG               CONCAT3(TCCR,  OC_TIMER, A)
+  #define PPM_FORCE_REG            CONCAT3(TCCR,  OC_TIMER, B)
+  #define TIM_MODE_NORMAL()        (PPM_WF_REG &= ~(_BV(WGM01) | _BV(WGM00)));(PPM_CS_REG = (_BV(CS01) | _BV(CS00)))
+  #if (OC_CHANNEL == CHANNEL(A))
+    #define PIN_BIT  0
+  #else
+    #define PIN_BIT  1
+  #endif
 #else
-/* Last supported target is assumed to be Atmega328p (UNO) */
-#define PPM_OCR_PORT               PORTD
-#define PPM_OCR_PIN                PIND
-#define PPM_OCR_PIN_MSK            (1 << 6) /* PD6 */
-#define PPM_OCR_DDR                DDRD
+  #if (OC_TIMER == TIMER(1))
+    /* No PPM_WF_REG needed */
+    #define PPM_CS_REG             CONCAT2(TCCR,  OC_TIMER)
+    #define PPM_FORCE_REG          GTCCR
+    #define TIM_MODE_NORMAL()      (PPM_CS_REG = (_BV(CS12) | _BV(CS11) | _BV(CS10)))
+    #if (OC_CHANNEL == CHANNEL(A))
+      #define PIN_BIT  1
+      #define PPM_CM_REG           CONCAT2(TCCR,  OC_TIMER)
+    #else
+      #define PIN_BIT  4
+      #define PPM_CM_REG           GTCCR
+    #endif
+  #else
+    #error TinyPpmGen supports only 8 bit Timers (Timer0 and Timer1 on ATtiny85) !!!  
+  #endif
 #endif
-#endif
-
-#ifndef TIMSK0
-#define TIMSK0                     TIMSK
-#endif
-
-#define COMP_VECT                  TIMER0_COMPA_vect
-#define PPM_OCR                    OCR0A
-#define TIM_CTRL_REG1              TCCR0A
-#define TIM_CTRL_REG2              TCCR0B
-#define TIM_IT_MSK_REG             TIMSK0
-#define OCIE_MASK                  _BV(OCIE0A)
-#define OCR_FORCE_MASK             _BV(FOC0A)
-
-#define PPM_OCR_INT_ENABLE()       TIM_IT_MSK_REG |= OCIE_MASK
-#define PPM_OCR_INT_DISABLE()      TIM_IT_MSK_REG &= ~OCIE_MASK
-
-#define PPM_OCR_FORCE()            TIM_CTRL_REG2 |= OCR_FORCE_MASK
-
-#ifdef WGM02
-#define TIM_MODE_NORMAL()         (TIM_CTRL_REG1 &= ~(_BV(WGM01) | _BV(WGM00)));(TIM_CTRL_REG2 &= ~(_BV(WGM02)))
+#define PPM_OC_INT_MSK_REG         TIMSK
+#define PPM_PORT                   B
 #else
-#define TIM_MODE_NORMAL()         (TIM_CTRL_REG1 &= ~(_BV(WGM01) | _BV(WGM00)))
+#ifdef __AVR_ATmega328P__
+#define PPM_WF_REG                 CONCAT3(TCCR,  OC_TIMER, A)
+#define PPM_CS_REG                 CONCAT3(TCCR,  OC_TIMER, B)
+#define PPM_CM_REG                 CONCAT3(TCCR,  OC_TIMER, A)
+#define PPM_FORCE_REG              CONCAT3(TCCR,  OC_TIMER, B)
+#if (OC_TIMER == TIMER(0))
+  #define PPM_PORT                 D
+  #define PPM_OC_INT_MSK_REG       TIMSK0
+  #define TIM_MODE_NORMAL()        (PPM_WF_REG &= ~(_BV(CONCAT3(WGM,OC_TIMER,1)) | _BV(CONCAT3(WGM,OC_TIMER,0))));(PPM_CS_REG = (_BV(CONCAT3(CS,OC_TIMER,1)) | _BV(CONCAT3(CS,OC_TIMER,0))))
+  #if (OC_CHANNEL == CHANNEL(A))
+    #define PIN_BIT  6
+  #else
+    #define PIN_BIT  5
+  #endif
+#else
+  #if (OC_TIMER == TIMER(2))
+    #define PPM_OC_INT_MSK_REG     TIMSK2
+    #define TIM_MODE_NORMAL()      (PPM_WF_REG &= ~(_BV(CONCAT3(WGM,OC_TIMER,1)) | _BV(CONCAT3(WGM,OC_TIMER,0))));(PPM_CS_REG = _BV(CONCAT3(CS,OC_TIMER,2)))
+    #define PIN_BIT                3
+    #if (OC_CHANNEL == CHANNEL(A))
+      #define PPM_PORT             B
+    #else
+      #define PPM_PORT             D
+    #endif
+  #else
+    #error TinyPpmGen supports UNO only with 8 bit Timers (Timer0 and Timer2) !!!
+  #endif
+#endif
+#else
+#error This target is not supported (yet) by the TinyPpmGn library!!!
+#endif
+#endif
 #endif
 
-#define TOGGLE_PPM_PIN_DISABLE()  (TIM_CTRL_REG1 &= ~(_BV(COM0A1) | _BV(COM0A0)))
-#define TOGGLE_PPM_PIN_ENABLE()   (TIM_CTRL_REG1 |= _BV(COM0A0))
+#define PPM_OC_PORT                CONCAT2(PORT,PPM_PORT)
+#define PPM_OC_DDR                 CONCAT2(DDR, PPM_PORT)
+#define PPM_OC_PIN                 CONCAT2(PIN, PPM_PORT)
+#define PPM_OC_PIN_MSK             (1 << PIN_BIT)
+
+#define COMP_VECT                  CONCAT5(TIMER, OC_TIMER, _COMP, OC_CHANNEL_LETTER, _vect)
+#define PPM_OCR                    CONCAT3(OCR,   OC_TIMER, OC_CHANNEL_LETTER)
+#define OCIE_MASK                  _BV(CONCAT3(OCIE, OC_TIMER, OC_CHANNEL_LETTER))
+#define OC_FORCE_MASK              _BV(CONCAT3(FOC,  OC_TIMER, OC_CHANNEL_LETTER))
+
+#define PPM_OC_INT_ENABLE()        PPM_OC_INT_MSK_REG |=  OCIE_MASK
+#define PPM_OC_INT_DISABLE()       PPM_OC_INT_MSK_REG &= ~OCIE_MASK
+
+#define PPM_OC_FORCE()             PPM_FORCE_REG |= OC_FORCE_MASK
+
+#define TOGGLE_PPM_PIN_DISABLE()  (PPM_CM_REG &= ~(_BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 1)) | _BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 0))))
+#define TOGGLE_PPM_PIN_ENABLE()   (PPM_CM_REG |=   _BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 0)))
+
 
 #define FULL_OVF_MASK             0x7F
 #define HALF_OVF_MASK             0x80
@@ -87,7 +176,7 @@
 
 #define PPM_FRAME_PERIOD_US       20000
 
-#define PPM_US_GUARD              64 /* Time to be sure to have time to prepare remaing ticks */
+#define PPM_GUARD_US              64 /* Time to be sure to have time to prepare remaing ticks */
 
 /*
 Positive PPM    .-----.                         .-----.
@@ -153,20 +242,20 @@ uint8_t OneTinyPpmGen::begin(uint8_t PpmModu, uint8_t ChNb)
       OneTinyPpmGen::setChWidth_us(Idx, PPM_NEUTRAL_US); /* Set all channels to Neutral */
     }
     /* Set Pin as Output according to the PPM modulation level */
-    PPM_OCR_DDR |= PPM_OCR_PIN_MSK; /* Set pin as output */
+    PPM_OC_DDR |= PPM_OC_PIN_MSK; /* Set pin as output */
     if(PpmModu == TINY_PPM_GEN_NEG_MOD)
     {
-      PPM_OCR_PIN |= PPM_OCR_PIN_MSK; /*Set pin to high */
+      PPM_OC_PIN |= PPM_OC_PIN_MSK; /* Set pin to high */
     }
     else
     {
-      PPM_OCR_PIN &= ~PPM_OCR_PIN_MSK; /*Set pin to low */
+      PPM_OC_PIN &= ~PPM_OC_PIN_MSK; /* Set pin to low */
     }
     _Idx = _ChMaxNb; /* To reload values at startup */
     TIM_MODE_NORMAL();
     TOGGLE_PPM_PIN_ENABLE();
-    if(PpmModu == TINY_PPM_GEN_NEG_MOD) PPM_OCR_FORCE(); /* Force Output Compare to initialize properly the output */
-    PPM_OCR_INT_ENABLE();
+    if(PpmModu == TINY_PPM_GEN_NEG_MOD) PPM_OC_FORCE(); /* Force Output Compare to initialize properly the output */
+    PPM_OC_INT_ENABLE();
   }
   return(Ok);
 }
@@ -181,12 +270,12 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
     TickNb = PPM_US_TO_TICK(Width_us - 256 + (MS_TIMER_TICK_DURATION_US / 2)); /* Convert in rounded Timer Ticks. 256: Should be normally around 300 us, but works fine with 256 us */
     Ch_Next_Ovf = (TickNb & 0xFF00) >> 8;
     Ch_Next_Rem = (TickNb & 0x00FF);
-    if(Ch_Next_Rem < PPM_US_TO_TICK(PPM_US_GUARD))
+    if(Ch_Next_Rem < PPM_US_TO_TICK(PPM_GUARD_US))
     {
       Ch_Next_Ovf |= HALF_OVF_MASK;
       Ch_Next_Rem += HALF_OVF_VAL;
     }
-    if(Ch_Next_Rem > (256 - PPM_US_TO_TICK(PPM_US_GUARD)))
+    if(Ch_Next_Rem > (256 - PPM_US_TO_TICK(PPM_GUARD_US)))
     {
       Ch_Next_Ovf++;
       Ch_Next_Ovf |= HALF_OVF_MASK;
@@ -209,24 +298,24 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
     SynchTick = PPM_US_TO_TICK(PPM_FRAME_PERIOD_US) - SumTick - PPM_US_TO_TICK(256);
     Ch0_Next_Ovf = (SynchTick & 0xFF00) >> 8;
     Ch0_Next_Rem = (SynchTick & 0x00FF);
-    if(Ch0_Next_Rem < PPM_US_TO_TICK(PPM_US_GUARD))
+    if(Ch0_Next_Rem < PPM_US_TO_TICK(PPM_GUARD_US))
     {
       Ch0_Next_Ovf |= HALF_OVF_MASK;
       Ch0_Next_Rem += HALF_OVF_VAL;
     }
-    if(Ch0_Next_Rem > (256 - PPM_US_TO_TICK(PPM_US_GUARD)))
+    if(Ch0_Next_Rem > (256 - PPM_US_TO_TICK(PPM_GUARD_US)))
     {
       Ch0_Next_Ovf++;
       Ch0_Next_Ovf |= HALF_OVF_MASK;
       Ch0_Next_Rem -= HALF_OVF_VAL;
     }
     /* Update requested Channel AND Synchro to keep constant the period (20ms) */
-    PPM_OCR_INT_DISABLE();
+    PPM_OC_INT_DISABLE();
     _Ch[0].Next.Ovf = Ch0_Next_Ovf;
     _Ch[0].Next.Rem = Ch0_Next_Rem;
     _Ch[Ch].Next.Ovf = Ch_Next_Ovf;
     _Ch[Ch].Next.Rem = Ch_Next_Rem;
-    PPM_OCR_INT_ENABLE(); 
+    PPM_OC_INT_ENABLE(); 
   }
 }
 

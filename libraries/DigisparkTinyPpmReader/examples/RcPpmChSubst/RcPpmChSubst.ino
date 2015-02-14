@@ -2,12 +2,24 @@
 RcPpmChSubst sketch
 by RC Navy (http://p.loussouarn.free.fr/arduino/arduino.html) 2015
 This sketch reads an RC PPM frame, extracts the numbers of channels and their pulse witdhs and substitutes the 4th channel with a fix pulse width (2000 us).
-This sketch can work with a Digispark pro, Digispark, Arduino UNO...
+This sketch can work with a Digispark pro, Digispark and Arduino UNO.
 The PPM input shall support pin change interrupt.
-The PPM output pin is target dependant and shall be:
-       - ATtiny167  (Digispark pro: PPM output -> PA2 -> arduino pin#8)
-       - ATtiny85   (Digispark:     PPM output -> PB0 -> arduino pin#0)
-       - ATmega328P (Arduino UNO:   PPM output -> PD6 -> arduino pin#6)
+
+PPM output pin is imposed by hardware and is target dependant:
+(The user has to define Timer and Channel to use in TinyPpmGen.h file of the library)
+       - ATtiny167 (Digispark pro):
+         TIMER(0), CHANNEL(A) -> OC0A -> PB0 -> Pin#0
+
+       - ATtiny85 (Digispark):
+         TIMER(0), CHANNEL(A) -> OC0A -> PB0 -> Pin#0
+         TIMER(0), CHANNEL(B) -> OC0B -> PB1 -> Pin#1
+         TIMER(1), CHANNEL(A) -> OC1A -> PB1 -> Pin#1
+         
+       - ATmega328P (Arduino UNO):
+         TIMER(0), CHANNEL(A) -> OC0A -> PD6 -> Pin#6
+         TIMER(0), CHANNEL(B) -> OC0B -> PD5 -> Pin#5
+         TIMER(2), CHANNEL(A) -> OC2A -> PB3 -> Pin#11
+         TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3
 This example code is in the public domain.
 */
 #include <TinyPinChange.h>

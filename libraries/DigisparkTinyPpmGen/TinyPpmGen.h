@@ -1,28 +1,84 @@
 #ifndef TINY_PPM_GEN
 #define TINY_PPM_GEN 1
-/* A tiny interrupt driven RC PPM frame generator library using compare match of the timer used for ms in the arduino core
+/* A tiny interrupt driven RC PPM frame generator library using compare match of a 8 bits timer (timer used for ms in the arduino core can be reused)
    Features:
-   - Uses Output Compare Channel A of the 8 bit Timer 0 (When used, disables PWM associated to Timer 0 -> Pin marked as "OC0A" shall be used as PPM Frame output (no other choice) 
+   - Uses Output Compare Channel A or B of the 8 bit Timer 0, 1 or 2. When used, it disables associated PWM -> Pin marked as "OCxy" shall be used as PPM Frame output (no other choice) 
    - Can generate a PPM Frame containing up to 8 RC Channels (600 -> 2000 us) or 7 RC Channels (600 -> 2400 us)
    - Positive or Negative Modulation supported
    - Constant PPM Frame period: 20 ms
    - No need to wait 20 ms to set the pulse width order for the channels, can be done at any time
    - Synchronisation indicator for digital data transmission over PPM
    - Blocking fonctions such as delay() can be used in the loop() since it's an interrupt driven PPM generator
-   - Supported devices:
-       - ATtiny167  (Digispark pro: PPM output -> PA2 -> arduino pin#8)
-       - ATtiny85   (Digispark:     PPM output -> PB0 -> arduino pin#0)
-       - ATmega328P (Arduino UNO:   PPM output -> PD6 -> arduino pin#6)
+   - Supported devices: (The user has to define Timer and Channel to use in TinyPpmGen.h file of the library)
+       - ATtiny167 (Digispark pro):
+         TIMER(0), CHANNEL(A) -> OC0A -> PB0 -> Pin#0
+
+       - ATtiny85 (Digispark):
+         TIMER(0), CHANNEL(A) -> OC0A -> PB0 -> Pin#0
+         TIMER(0), CHANNEL(B) -> OC0B -> PB1 -> Pin#1
+         TIMER(1), CHANNEL(A) -> OC1A -> PB1 -> Pin#1
+         
+       - ATmega328P (Arduino UNO):
+         TIMER(0), CHANNEL(A) -> OC0A -> PD6 -> Pin#6
+         TIMER(0), CHANNEL(B) -> OC0B -> PD5 -> Pin#5
+         TIMER(2), CHANNEL(A) -> OC2A -> PB3 -> Pin#11
+         TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3
+         
    RC Navy 2015
    http://p.loussouarn.free.fr
    31/01/2015: Creation
+   14/02/2015: Timer and Channel choices added
 */
 #include <Arduino.h>
 
-#define TINY_PPM_GEN_POS_MOD          HIGH
-#define TINY_PPM_GEN_NEG_MOD          LOW
+/* Constant definition: /!\ do NOT change this /!\ */
+#define CH_A                           0xA /* /!\ Do NOT change this /!\ */
+#define CH_B                           0xB /* /!\ Do NOT change this /!\ */
 
-#define TINY_PPM_GEN_CLIENT(ClientIdx)         (1 << (ClientIdx)) /* Range: 0 to 7 */
+/************************************************************************/
+/*                                                                      */
+/*  FINAL USER: SELECT BELOW THE TIMER and THE CHANNEL YOU WANT TO USE  */
+/*                                                                      */
+/************************************************************************/
+#define OC_TIMER      TIMER(0)    /* <-- Choose here the timer   between TIMER(0), TIMER(1) or TIMER(2) */
+#define OC_CHANNEL    CHANNEL(A)  /* <-- Choose here the channel between CHANNEL(A) and CHANNEL(B) */
+
+/*
+ATtiny167 (Digispark pro):
+=========================
+TIMER(0), CHANNEL(A) -> OC0A -> PA2 -> Pin#8  Test: OK
+
+ATtiny85 (Digispark):
+====================
+TIMER(0), CHANNEL(A) -> OC0A -> PB0 -> Pin#0  Test: OK
+TIMER(0), CHANNEL(B) -> OC0B -> PB1 -> Pin#1  Test: OK
+TIMER(1), CHANNEL(A) -> OC1A -> PB1 -> Pin#1  Test: OK
+TIMER(1), CHANNEL(B) -> OC1B -> PB4 -> Pin#4  Test: Does NOT work for an unknown reason (Do NOT use it for now)
+
+ATmega328P (UNO):
+================
+TIMER(0), CHANNEL(A) -> OC0A -> PD6 -> Pin#6  Test: OK
+TIMER(0), CHANNEL(B) -> OC0B -> PD5 -> Pin#5  Test: OK
+TIMER(2), CHANNEL(A) -> OC2A -> PB3 -> Pin#11 Test: OK
+TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3  Test: OK
+*/
+/************************************************************************/
+/*                                                                      */
+/*  FINAL USER: SELECT ABOVE THE TIMER and THE CHANNEL YOU WANT TO USE  */
+/*                                                                      */
+/************************************************************************/
+
+
+/* /!\ Do NOT change below /!\ */
+#define TIMER(Timer)                   Timer
+#define CHANNEL(Channel)               CH_##Channel
+
+/* PPM Modulation choices: Positive or Negative */
+#define TINY_PPM_GEN_POS_MOD           HIGH
+#define TINY_PPM_GEN_NEG_MOD           LOW
+
+/* Macro for PPM Gen client */
+#define TINY_PPM_GEN_CLIENT(ClientIdx) (1 << (ClientIdx)) /* Range: 0 to 7 */
 
 class OneTinyPpmGen
 {
@@ -35,6 +91,6 @@ class OneTinyPpmGen
     uint8_t isSynchro(uint8_t SynchroClientMsk = TINY_PPM_GEN_CLIENT(7)); /* Default value: 8th Synchro client -> 0 to 6 free for other clients*/
 };
 
-extern OneTinyPpmGen TinyPpmGen;                 //Object externalisation
+extern OneTinyPpmGen TinyPpmGen; /* Object externalisation */
 
 #endif

@@ -1,7 +1,7 @@
 TinyPpmGen library
 ==================
 
-**TinyPpmGen** is an interrupt-driven RC PPM generator library using the 8 bit Timer0 Output Compare Interrupt. As this library uses hardware resources, the timing is very accurate but the PPM output pin is imposed (cf. _Design Considerations_ below).
+**TinyPpmGen** is an interrupt-driven RC PPM generator library using a 8 bit Timer Output Compare Interrupt. As this library uses hardware resources, the timing is very accurate but the PPM output pin is imposed (cf. _Design Considerations_ below).
 
 This PPM generator can transport up to 8 RC channels and supports positive and negative PPM modulation. The PPM frame period is constant (20 ms) regardless of the channel pulse widths.
 
@@ -38,11 +38,23 @@ With:
 
 Design considerations:
 ---------------------
-As this library relies on Timer0 Output Compare Interrupt, the PPM output pin is imposed by the hardware and is target dependent:
+As this library relies on Timer Output Compare capabilities, the PPM output pin is imposed by the hardware and is target dependent.
 
-* **ATtiny167**  (Digispark pro: PPM output -> PA2 -> arduino pin#8)
-* **ATtiny85**   (Digispark:     PPM output -> PB0 -> arduino pin#0)
-* **ATmega328P** (Arduino UNO:   PPM output -> PD6 -> arduino pin#6)
+However, there is some flexibility as the timer and the channel can be chosen by the user (in TinyPpmGen.h):
+
+* **ATtiny167** (Digispark pro):
+	* TIMER(0), CHANNEL(A) -> OC0A -> PB0 -> Pin#0
+
+* **ATtiny85**   (Digispark):
+	* TIMER(0), CHANNEL(A) -> OC0A -> PB0 -> Pin#0
+	* TIMER(0), CHANNEL(B) -> OC0B -> PB1 -> Pin#1
+	* TIMER(1), CHANNEL(A) -> OC1A -> PB1 -> Pin#1
+
+* **ATmega328P** (Arduino UNO):
+	* TIMER(0), CHANNEL(A) -> OC0A -> PD6 -> Pin#6
+	* TIMER(0), CHANNEL(B) -> OC0B -> PD5 -> Pin#5
+	* TIMER(2), CHANNEL(A) -> OC2A -> PB3 -> Pin#11
+	* TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3
 
 Contact
 -------
