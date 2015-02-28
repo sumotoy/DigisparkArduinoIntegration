@@ -25,6 +25,10 @@
 
 #define SOFT_RC_PULSE_IN_TIMEOUT_SUPPORT
 
+#ifndef boolean
+#define boolean uint8_t /* Workaround for IDE 1.6.0 */
+#endif
+
 class SoftRcPulseIn
 {
   public:
