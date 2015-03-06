@@ -172,7 +172,7 @@
 #define HALF_OVF_MASK             0x80
 #define HALF_OVF_VAL              128
 
-#define PPM_NEUTRAL_US            2000
+#define PPM_NEUTRAL_US            1500
 
 #define PPM_FRAME_PERIOD_US       20000
 
@@ -262,14 +262,14 @@ uint8_t OneTinyPpmGen::begin(uint8_t PpmModu, uint8_t ChNb)
 
 void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
 {
-  uint16_t TickNb, SumTick = 0, SynchTick;
+  uint16_t ChTickNb, SumTick = 0, SynchTick;
   uint8_t  Ch_Next_Ovf, Ch_Next_Rem, Ch0_Next_Ovf, Ch0_Next_Rem;
 
   if((Ch >= 1) && (Ch <= _ChMaxNb))
   {
-    TickNb = PPM_US_TO_TICK(Width_us - 256 + (MS_TIMER_TICK_DURATION_US / 2)); /* Convert in rounded Timer Ticks. 256: Should be normally around 300 us, but works fine with 256 us */
-    Ch_Next_Ovf = (TickNb & 0xFF00) >> 8;
-    Ch_Next_Rem = (TickNb & 0x00FF);
+    ChTickNb = PPM_US_TO_TICK(Width_us - 256 + (MS_TIMER_TICK_DURATION_US / 2)); /* Convert in rounded Timer Ticks. 256: Should be normally around 300 us, but works fine with 256 us */
+    Ch_Next_Ovf = (ChTickNb & 0xFF00) >> 8;
+    Ch_Next_Rem = (ChTickNb & 0x00FF);
     if(Ch_Next_Rem < PPM_US_TO_TICK(PPM_GUARD_US))
     {
       Ch_Next_Ovf |= HALF_OVF_MASK;
@@ -284,9 +284,10 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
     /* Update Synchro Time */
     for(uint8_t Idx = 1; Idx <= _ChMaxNb; Idx++)
     {
+      SumTick += PPM_US_TO_TICK(256);
       if(Idx != Ch)
       {
-        SumTick += PPM_US_TO_TICK(256) + ((_Ch[Idx].Cur.Ovf & FULL_OVF_MASK) << 8) + _Ch[Idx].Next.Rem;
+        SumTick += ((_Ch[Idx].Cur.Ovf & FULL_OVF_MASK) << 8) + _Ch[Idx].Next.Rem;
         if(_Ch[Idx].Cur.Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
       }
       else
@@ -324,7 +325,7 @@ uint8_t OneTinyPpmGen::isSynchro(uint8_t SynchroClientMsk /*= TINY_PPM_GEN_CLIEN
   uint8_t Ret;
   
   Ret = !!(_Synchro & SynchroClientMsk);
-  _Synchro &= ~SynchroClientMsk; /* Clear indicator for the Synchro client */
+  if(Ret) _Synchro &= ~SynchroClientMsk; /* Clear indicator for the Synchro client */
   
   return(Ret);
 }
