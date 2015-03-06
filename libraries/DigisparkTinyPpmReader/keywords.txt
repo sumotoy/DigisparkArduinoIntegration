@@ -13,6 +13,7 @@ TinyPpmReader	KEYWORD1
 attach	KEYWORD2
 detectedChannelNb	KEYWORD2
 width_us	KEYWORD2
+ppmPeriod_us	KEYWORD2
 isSynchro	KEYWORD2
 suspend	KEYWORD2
 resume	KEYWORD2
