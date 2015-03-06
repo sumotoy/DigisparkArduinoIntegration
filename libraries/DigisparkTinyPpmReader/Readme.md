@@ -37,6 +37,9 @@ With:
 	* **_Ch_**: The Channel (from 1 to Detected Channel Number).
 	* Returns the requested channel pulse width in µs
 
+* **uint16_t ppmPeriod_us()**:
+	* Returns the measured PPM period in µs
+
 * **uint8_t isSynchro()**:
 	* PPM Synchronization indicator: indicates that the largest pulse value (Synchro) has just been received. This is a "clear on read" fonction (no need to clear explicitely the indicator).
 

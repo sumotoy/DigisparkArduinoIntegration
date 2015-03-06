@@ -101,12 +101,21 @@ uint16_t TinyPpmReader::width_us(uint8_t Ch)
   return(Width_us);
 }
 
-uint8_t TinyPpmReader::isSynchro(void)
+uint16_t TinyPpmReader::ppmPeriod_us(void)
+{
+  uint16_t PpmPeriod_us = 0;
+  cli();
+  PpmPeriod_us = _PpmPeriodUs;
+  sei();
+  return(PpmPeriod_us);
+}
+
+uint8_t TinyPpmReader::isSynchro(uint8_t SynchroClientMsk /*= TINY_PPM_READER_CLIENT(7)*/)
 {
   uint8_t Ret;
   
-  Ret = _Synchro;
-  _Synchro = 0;
+  Ret = !!(_Synchro & SynchroClientMsk);
+  if(Ret) _Synchro &= ~SynchroClientMsk; /* Clear indicator for the Synchro client */
   
   return(Ret);
 }
@@ -128,7 +137,8 @@ void TinyPpmReader::rcChannelCollectorIsr(void)
 {
   TinyPpmReader *PpmReader;
   uint16_t CurrentEdgeUs, PulseDurationUs;
-
+  static uint8_t Period = false;
+  
   for ( PpmReader = first; PpmReader != 0; PpmReader = PpmReader->next )
   {
     if(TinyPinChange_FallingEdge(PpmReader->_VirtualPort, PpmReader->_PpmFrameInputPin))
@@ -140,7 +150,10 @@ void TinyPpmReader::rcChannelCollectorIsr(void)
       {
 	PpmReader->_ChIdxMax = PpmReader->_ChIdx;
 	PpmReader->_ChIdx    = 0;
-	PpmReader->_Synchro  = 1; /* Synchro detected */
+	PpmReader->_Synchro  = 0xFF; /* Synchro detected */
+	Period = !Period;
+	if(Period) PpmReader->_StartPpmPeriodUs = CurrentEdgeUs;
+	else       PpmReader->_PpmPeriodUs      = CurrentEdgeUs - PpmReader->_StartPpmPeriodUs;
       }
       else
       {
