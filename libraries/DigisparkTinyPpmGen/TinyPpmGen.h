@@ -3,9 +3,9 @@
 /* A tiny interrupt driven RC PPM frame generator library using compare match of a 8 bits timer (timer used for ms in the arduino core can be reused)
    Features:
    - Uses Output Compare Channel A or B of the 8 bit Timer 0, 1 or 2. When used, it disables associated PWM -> Pin marked as "OCxy" shall be used as PPM Frame output (no other choice) 
-   - Can generate a PPM Frame containing up to 8 RC Channels (600 -> 2000 us) or 7 RC Channels (600 -> 2400 us)
+   - Can generate a PPM Frame containing up to 8 RC Channels (600 -> 2000 us) or 7 RC Channels (600 -> 2400 us) with default PPM period (20ms), 8 with (higher PPM period)
    - Positive or Negative Modulation supported
-   - Constant PPM Frame period: 20 ms
+   - Constant PPM Frame period: configurable from 10 to 40 ms (default = 20 ms)
    - No need to wait 20 ms to set the pulse width order for the channels, can be done at any time
    - Synchronisation indicator for digital data transmission over PPM
    - Blocking fonctions such as delay() can be used in the loop() since it's an interrupt driven PPM generator
@@ -28,6 +28,7 @@
    http://p.loussouarn.free.fr
    31/01/2015: Creation
    14/02/2015: Timer and Channel choices added
+   22/03/2015: Configurable PPM period in us added as optional argument in begin() method (default = 20ms)
 */
 #include <Arduino.h>
 
@@ -77,6 +78,8 @@ TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3  Test: OK
 #define TINY_PPM_GEN_POS_MOD           HIGH
 #define TINY_PPM_GEN_NEG_MOD           LOW
 
+#define DEFAULT_PPM_PERIOD             20000
+
 /* Macro for PPM Gen client */
 #define TINY_PPM_GEN_CLIENT(ClientIdx) (1 << (ClientIdx)) /* Range: 0 to 7 */
 
@@ -84,9 +87,10 @@ class OneTinyPpmGen
 {
   private:
     // static data
+    uint16_t _PpmPeriod_us;
   public:
     OneTinyPpmGen(void);
-    uint8_t begin(uint8_t PpmModu, uint8_t ChNb);
+    uint8_t begin(uint8_t PpmModu, uint8_t ChNb, uint16_t PpmPeriod_us = DEFAULT_PPM_PERIOD);
     void    setChWidth_us(uint8_t Ch, uint16_t Width_us);
     uint8_t isSynchro(uint8_t SynchroClientMsk = TINY_PPM_GEN_CLIENT(7)); /* Default value: 8th Synchro client -> 0 to 6 free for other clients*/
 };
