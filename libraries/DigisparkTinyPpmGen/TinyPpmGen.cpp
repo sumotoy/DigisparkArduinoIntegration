@@ -27,6 +27,7 @@
    31/01/2015: Creation
    14/02/2015: Timer and Channel choices added
    22/03/2015: Configurable PPM period in us added as optional argument in begin() method (default = 20ms)
+   06/04/2015: RcTxPop support added (allows to create a virtual serial port over a PPM channel)
 */
 #include <TinyPpmGen.h>
 
@@ -327,6 +328,17 @@ uint8_t OneTinyPpmGen::isSynchro(uint8_t SynchroClientMsk /*= TINY_PPM_GEN_CLIEN
   
   return(Ret);
 }
+/* Begin of RcTxPop support */
+uint8_t OneTinyPpmGen::RcTxPopIsSynchro()
+{
+  return(isSynchro(TINY_PPM_GEN_CLIENT(6)));
+}
+
+void OneTinyPpmGen::RcTxPopSetWidth_us(uint16_t Width_us, uint8_t Ch /*= 255*/)
+{
+  setChWidth_us(Ch, Width_us); /* Take care about argument order (like that, since Ch will be optional for other pulse generator) */
+}
+/* End of RcTxPop support */
 
 SIGNAL(COMP_VECT)
 {

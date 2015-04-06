@@ -29,8 +29,10 @@
    31/01/2015: Creation
    14/02/2015: Timer and Channel choices added
    22/03/2015: Configurable PPM period in us added as optional argument in begin() method (default = 20ms)
+   06/04/2015: RcTxPop support added (allows to create a virtual serial port over a PPM channel)
 */
 #include <Arduino.h>
+#include <RcTxPop.h>
 
 /* Constant definition: /!\ do NOT change this /!\ */
 #define CH_A                           0xA /* /!\ Do NOT change this /!\ */
@@ -83,7 +85,7 @@ TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3  Test: OK
 /* Macro for PPM Gen client */
 #define TINY_PPM_GEN_CLIENT(ClientIdx) (1 << (ClientIdx)) /* Range: 0 to 7 */
 
-class OneTinyPpmGen
+class OneTinyPpmGen : public RcTxPop
 {
   private:
     // static data
@@ -93,6 +95,9 @@ class OneTinyPpmGen
     uint8_t begin(uint8_t PpmModu, uint8_t ChNb, uint16_t PpmPeriod_us = DEFAULT_PPM_PERIOD);
     void    setChWidth_us(uint8_t Ch, uint16_t Width_us);
     uint8_t isSynchro(uint8_t SynchroClientMsk = TINY_PPM_GEN_CLIENT(7)); /* Default value: 8th Synchro client -> 0 to 6 free for other clients*/
+    /* RcTxPop support */
+    virtual uint8_t  RcTxPopIsSynchro();
+    virtual void     RcTxPopSetWidth_us(uint16_t Width_us, uint8_t Ch = 255);
 };
 
 extern OneTinyPpmGen TinyPpmGen; /* Object externalisation */

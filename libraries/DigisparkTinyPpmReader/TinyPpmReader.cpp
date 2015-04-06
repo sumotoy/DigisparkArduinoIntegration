@@ -7,6 +7,7 @@
    RC Navy 2015
    http://p.loussouarn.free.fr
    01/02/2015: Creation
+   06/04/2015: RcTxPop support added (allows to create a virtual serial port over a PPM channel)
 */
 #include <TinyPpmReader.h>
 
@@ -94,9 +95,17 @@ uint16_t TinyPpmReader::width_us(uint8_t Ch)
   if(Ch >= 1 && Ch <= TinyPpmReader::detectedChannelNb())
   {
     Ch--;
+#if 1
+    /* Read pulse width without disabling interrupts */
+    do
+    {
+      Width_us = _ChWidthUs[Ch];
+    }while(Width_us != _ChWidthUs[Ch]);
+#else
     cli();
     Width_us = _ChWidthUs[Ch];
     sei();
+#endif
   }
   return(Width_us);
 }
@@ -104,9 +113,17 @@ uint16_t TinyPpmReader::width_us(uint8_t Ch)
 uint16_t TinyPpmReader::ppmPeriod_us(void)
 {
   uint16_t PpmPeriod_us = 0;
+#if 1
+    /* Read PPM Period without disabling interrupts */
+    do
+    {
+      PpmPeriod_us = _PpmPeriodUs;
+    }while(PpmPeriod_us != _PpmPeriodUs);
+#else
   cli();
   PpmPeriod_us = _PpmPeriodUs;
   sei();
+#endif
   return(PpmPeriod_us);
 }
 
@@ -119,6 +136,17 @@ uint8_t TinyPpmReader::isSynchro(uint8_t SynchroClientMsk /*= TINY_PPM_READER_CL
   
   return(Ret);
 }
+/* Begin of RcRxPop support */
+uint8_t TinyPpmReader::RcRxPopIsSynchro()
+{
+  return(isSynchro(TINY_PPM_READER_CLIENT(6)));
+}
+
+uint16_t TinyPpmReader::RcRxPopGetWidth_us(uint8_t Ch)
+{
+  return(width_us(Ch));
+}
+/* End of RcRxPop support */
 
 void TinyPpmReader::suspend(void)
 {
@@ -145,7 +173,7 @@ void TinyPpmReader::rcChannelCollectorIsr(void)
     {
       CurrentEdgeUs   = (uint16_t)(micros() & 0xFFFF);
       PulseDurationUs = (uint16_t)(CurrentEdgeUs - PpmReader->_PrevEdgeUs);
-      PpmReader->_PrevEdgeUs      = CurrentEdgeUs;
+      PpmReader->_PrevEdgeUs = CurrentEdgeUs;
       if(PulseDurationUs >= SYNCHRO_TIME_MIN_US)
       {
 	PpmReader->_ChIdxMax = PpmReader->_ChIdx;
