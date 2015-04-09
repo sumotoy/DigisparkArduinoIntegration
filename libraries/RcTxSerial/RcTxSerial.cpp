@@ -38,7 +38,7 @@ RcTxSerial    *RcTxSerial::first = NULL;
 *************************************************************************/
 
 /* Constructor */
-RcTxSerial::RcTxSerial(RcTxPop *RcTxPop, uint8_t Ch, uint8_t TxFifoSize)
+RcTxSerial::RcTxSerial(RcTxPop *RcTxPop, uint8_t TxFifoSize, uint8_t Ch /* = 255 */)
 {
 #ifdef PPM_TX_SERIAL_USES_POWER_OF_2_AUTO_MALLOC
   if(TxFifoSize > 128) TxFifoSize = 128; /* Must fit in a 8 bits  */

@@ -13,7 +13,6 @@
  http://p.loussouarn.free.fr
 */
 
-#include <TinyPpmGen.h>
 #include "Arduino.h"
 #include <RcTxPop.h>
 
@@ -44,7 +43,7 @@ class RcTxSerial : public Stream
     static   RcTxSerial *first;
     uint8_t  TxFifoRead(char *TxChar);
   public:
-    RcTxSerial(RcTxPop *RcTxPop, uint8_t Ch, uint8_t TxFifoSize);
+    RcTxSerial(RcTxPop *RcTxPop, uint8_t TxFifoSize, uint8_t Ch = 255);
     int peek();
     virtual size_t write(uint8_t byte);
     virtual int read();
