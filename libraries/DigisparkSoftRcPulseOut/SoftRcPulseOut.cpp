@@ -1,7 +1,8 @@
-#include "SoftRcPulseOut.h"
+#include <SoftRcPulseOut.h>
 /*
  Update 01/03/2013: add support for Digispark (http://digistump.com): automatic Timer selection (RC Navy: p.loussouarn.free.fr)
  Update 19/08/2014: usage with write_us and read_us fixed
+ Update 06/04/2015: RcTxPop support added (allows to create a virtual serial port over a PPM channel)
 
  English: by RC Navy (2012)
  =======
@@ -124,6 +125,19 @@ uint8_t SoftRcPulseOut::attached()
   }
   return (0);
 }
+
+/* Begin of RcTxPop support */
+uint8_t SoftRcPulseOut::RcTxPopIsSynchro()
+{
+  return(refresh());
+}
+
+void SoftRcPulseOut::RcTxPopSetWidth_us(uint16_t Width_us, uint8_t Ch /*= 255*/)
+{
+  Ch = Ch; /* To avoid a warning at compilation time */
+  write_us(Width_us);
+}
+/* End of RcTxPop support */
 
 uint8_t SoftRcPulseOut::refresh(bool force /* = false */)
 {

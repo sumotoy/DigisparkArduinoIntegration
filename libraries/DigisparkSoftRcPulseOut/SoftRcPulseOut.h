@@ -4,8 +4,9 @@
 /*
  Update 01/03/2013: add support for Digispark (http://digistump.com): automatic Timer selection (RC Navy: p.loussouarn.free.fr)
  Update 19/08/2014: usage with write_us and read_us fixed and optimized for highest resolution
+ Update 06/04/2015: RcTxPop support added (allows to create a virtual serial port over a PPM channel)
 
- English: by RC Navy (2012)
+ English: by RC Navy (2012/2015)
  =======
  <SoftRcPulseOut>: a library mainly based on the <SoftwareServo> library, but with a better pulse generation to limit jitter.
  It supports the same methods as <SoftwareServo>.
@@ -14,7 +15,7 @@
  The refresh() method returns 1 if refresh done (can be used for synchro and/or for 20ms timer).
  http://p.loussouarn.free.fr
 
- Francais: par RC Navy (2012)
+ Francais: par RC Navy (2012/2015)
  ========
  <SoftRcPulseOut>: une librairie majoritairement basee sur la librairie <SoftwareServo>, mais avec une meilleure generation des impulsions pour limiter la gigue.
  Elle supporte les memes methodes que <SoftwareServo>.
@@ -24,15 +25,12 @@
  http://p.loussouarn.free.fr
 */
 
-#if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
+#include <RcTxPop.h>
 
 #include <inttypes.h>
 
-class SoftRcPulseOut
+class SoftRcPulseOut : public RcTxPop
 {
   private:
     boolean        ItMasked;
@@ -55,6 +53,9 @@ class SoftRcPulseOut
     uint8_t        attached();
     void           setMinimumPulse(uint16_t);  // pulse length for 0 degrees in microseconds, 540uS default
     void           setMaximumPulse(uint16_t);  // pulse length for 180 degrees in microseconds, 2400uS default
+    /* RcTxPop support */
+    virtual uint8_t  RcTxPopIsSynchro();
+    virtual void     RcTxPopSetWidth_us(uint16_t Width_us, uint8_t Ch = 255);
     static uint8_t refresh(bool force = false);// must be called at least every 50ms or so to keep servo alive
                                                // you can call more often, it won't happen more than once every 20ms
 };

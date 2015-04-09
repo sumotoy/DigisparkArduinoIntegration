@@ -7,9 +7,11 @@ RC Navy 2013
 http://p.loussouarn.free.fr
 */
 
-#include <SoftRcPulseIn.h>
-#include <SoftRcPulseOut.h>
 #include <TinyPinChange.h> /* Needed for <SoftRcPulseIn> library */
+#include <SoftRcPulseIn.h>
+#include <RcRxPop.h>
+#include <SoftRcPulseOut.h>
+#include <RcTxPop.h>
 
 #define RX_CHANNEL_PIN          2
 
