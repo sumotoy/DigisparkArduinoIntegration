@@ -47,6 +47,7 @@
 */
 #include <TinyPinChange.h>
 #include <SoftRcPulseIn.h>
+#include <RcRxPop.h>
 #include <SoftSerial.h>
 
 #define RX_AUX_GEAR_PIN   0 //Choose here the pin for the RC signal

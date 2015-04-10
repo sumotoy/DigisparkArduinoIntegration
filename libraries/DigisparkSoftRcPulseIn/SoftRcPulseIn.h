@@ -3,33 +3,31 @@
  =======
  <SoftRcPulseIn>: an asynchronous library to read Input Pulse Width from standard Hobby Radio-Control. This library is a non-blocking version of pulseIn().
  http://p.loussouarn.free.fr
+ V1.2: (06/04/2015) Support RcRxPop ajoute (permet de creer un port serie virtuel par dessus une voie PPM)
 
  Francais: par RC Navy (2012-2015)
  ========
  <SoftRcPulseIn>: une librairie asynchrone pour lire les largeur d'impulsions des Radio-Commandes standards. Cette librairie est une version non bloquante de pulsIn().
  http://p.loussouarn.free.fr
+ 06/04/2015: RcRxPop support added (allows to create a virtual serial port over a PPM channel)
 */
 
 #ifndef SOFT_RC_PULSE_IN_H
 #define SOFT_RC_PULSE_IN_H
 
-#if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
-
 #include <TinyPinChange.h>
+#include <RcRxPop.h>
 
 #include <inttypes.h>
 
 #define SOFT_RC_PULSE_IN_TIMEOUT_SUPPORT
 
 #ifndef boolean
-#define boolean uint8_t /* Workaround for IDE 1.6.0 */
+#define boolean uint8_t /* Workaround for IDE >= 1.6.0 */
 #endif
 
-class SoftRcPulseIn
+class SoftRcPulseIn : public RcRxPop
 {
   public:
     SoftRcPulseIn();
@@ -41,6 +39,9 @@ class SoftRcPulseIn
     boolean      available();
     boolean      timeout(uint8_t TimeoutMs, uint8_t *State);
     uint16_t     width_us();
+    /* RcRxPop support */
+    virtual uint8_t  RcRxPopIsSynchro();
+    virtual uint16_t RcRxPopGetWidth_us(uint8_t Ch);
     private:
     class SoftRcPulseIn  *next;
     static SoftRcPulseIn *first;
