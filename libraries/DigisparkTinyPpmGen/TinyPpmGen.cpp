@@ -174,6 +174,8 @@
 #define HALF_OVF_MASK             0x80
 #define HALF_OVF_VAL              128
 
+#define PPM_HEADER_US             300
+
 #define PPM_NEUTRAL_US            1500
 
 #define PPM_FRAME_MIN_PERIOD_US   10000
@@ -199,7 +201,7 @@ Negative PPM ---.     .-----x-----x-----x---x---.     .-----
                         Channel Duration
 Legend:
 ======
- P: Pulse header duration in ticks (Nb of Ticks corresponding to 256 us)
+ P: Pulse header duration in ticks (Nb of Ticks corresponding to PPM_HEADER_US us)
  F: Full timer overflow (256 Ticks)
  H: Half timer overflow (128 Ticks)
  R: Remaining Ticks to complete the full Channel duration
@@ -278,7 +280,7 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
 
   if((Ch >= 1) && (Ch <= _ChMaxNb))
   {
-    ChTickNb = PPM_US_TO_TICK(Width_us - 256 + (MS_TIMER_TICK_DURATION_US / 2)); /* Convert in rounded Timer Ticks. 256: Should be normally around 300 us, but works fine with 256 us */
+    ChTickNb = PPM_US_TO_TICK(Width_us - PPM_HEADER_US + (MS_TIMER_TICK_DURATION_US / 2)); /* Convert in rounded Timer Ticks */
     Ch_Next_Ovf = (ChTickNb & 0xFF00) >> 8;
     Ch_Next_Rem = (ChTickNb & 0x00FF);
     if(Ch_Next_Rem < PPM_GUARD_TICK)
@@ -289,7 +291,7 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
     /* Update Synchro Time */
     for(uint8_t Idx = 1; Idx <= _ChMaxNb; Idx++)
     {
-      SumTick += PPM_US_TO_TICK(256);
+      SumTick += PPM_US_TO_TICK(PPM_HEADER_US);
       if(Idx != Ch)
       {
         SumTick += ((_Ch[Idx].Cur.Ovf & FULL_OVF_MASK) << 8) + _Ch[Idx].Next.Rem;
@@ -301,7 +303,7 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
         if(Ch_Next_Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
       }
     }
-    SynchTick = PPM_US_TO_TICK(_PpmPeriod_us) - SumTick - PPM_US_TO_TICK(256);
+    SynchTick = PPM_US_TO_TICK(_PpmPeriod_us) - SumTick - PPM_US_TO_TICK(PPM_HEADER_US);
     Ch0_Next_Ovf = (SynchTick & 0xFF00) >> 8;
     Ch0_Next_Rem = (SynchTick & 0x00FF);
     if(Ch0_Next_Rem < PPM_GUARD_TICK)
@@ -346,7 +348,7 @@ SIGNAL(COMP_VECT)
   {
      /* Modify PPM_OCR only if Tick > 1 us */
 #if (MS_TIMER_TICK_DURATION_US > 1)
-    PPM_OCR += PPM_US_TO_TICK(256);
+    PPM_OCR += PPM_US_TO_TICK(PPM_HEADER_US);
 #endif
    /* Next Channel or Synchro */
     _Idx++;
