@@ -16,27 +16,25 @@
 #include "Arduino.h"
 #include <RcRxPop.h>
 
-#define RC_RX_SERIAL_END_OF_MSG  0xFF
-
 class RcRxSerial
 {
   private:
-    // static data
     RcRxPop   *_RcRxPop;
     uint8_t  _Ch;
     char     _Char;
+    uint8_t  _MsgLen;
     uint16_t _LastWidth_us;
     boolean  _available;
     boolean  _Nibble;
     boolean  _NibbleAvailable;
-    boolean  _OxFFasEndOfMsg;
+    uint8_t  somethingAvailable(void);
   public:
     RcRxSerial(RcRxPop *RcRxPop, uint8_t Ch = 255);
     uint8_t  available();
+    uint8_t  msgAvailable(char *RxBuf, uint8_t RxBufMaxLen);
     uint8_t  read();
     uint16_t lastWidth_us();     /* Only for calibration purpose */
     uint8_t  nibbleAvailable();  /* Only for calibration purpose */
-
 };
 
 #endif

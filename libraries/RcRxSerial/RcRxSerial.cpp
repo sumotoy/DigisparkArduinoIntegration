@@ -82,13 +82,16 @@ RcRxSerial::RcRxSerial(RcRxPop *RcRxPop, uint8_t Ch /*= 255*/)
 	_available = 0;
 	_Nibble = 0;
 	_NibbleAvailable = 0;
-	_OxFFasEndOfMsg = 1;//OxFFasEndOfMsg;
-	_Char = 0;  
+	_Char = 0;
+	_MsgLen = 0;
 }
 
-uint8_t RcRxSerial::available()
+#define RX_SERIAL_IDLE_NIBBLE_AVAILABLE  (1<< 0)
+#define RX_SERIAL_CHAR_AVAILABLE         (1<< 1)
+uint8_t RcRxSerial::somethingAvailable(void)
 {
-uint8_t NibbleIdx;
+  uint8_t Ret = 0;
+  uint8_t NibbleIdx;
 
   if(_RcRxPop->RcRxPopIsSynchro())
   {
@@ -99,12 +102,8 @@ uint8_t NibbleIdx;
      {
        if(NibbleIdx == NIBBLE_I)
        {
+         Ret = RX_SERIAL_IDLE_NIBBLE_AVAILABLE;
          _Nibble = 0; /* Idle -> Re-Synch */
-         if(_OxFFasEndOfMsg)
-         {
-            _Char = RC_RX_SERIAL_END_OF_MSG; /* IDLE char is used as End of Message marker */
-            _available = 1;
-         }
        }
        else
        {
@@ -115,14 +114,52 @@ uint8_t NibbleIdx;
          else
          {
             _Char |= NibbleIdx;  /* LSN */
+            Ret = RX_SERIAL_CHAR_AVAILABLE;
             _available = 1;
          }
          _Nibble = !_Nibble;
        }
      }
-     else _Nibble = 0; /* Unknown -> Re-Synch */
+     else
+     {
+       _Nibble = 0; /* Unknown -> Re-Synch */
+     }
   }
+  return(Ret);
+}
+
+uint8_t RcRxSerial::available()
+{
+  somethingAvailable();
   return(_available);
+}
+
+uint8_t RcRxSerial::msgAvailable(char *RxBuf, uint8_t RxBufMaxLen)
+{
+  uint8_t Ret = 0;
+
+  switch(somethingAvailable())
+  {
+    case RX_SERIAL_IDLE_NIBBLE_AVAILABLE:
+    if(_MsgLen)
+    {
+      Ret = _MsgLen; /* End of Message */
+      _MsgLen = 0;   /* Re-init */
+    }
+    break;
+    
+    case RX_SERIAL_CHAR_AVAILABLE:
+    if(_MsgLen < RxBufMaxLen)
+    {
+      RxBuf[_MsgLen++] = _Char;
+    }
+    else
+    {
+      Ret = 1; /* Max Message length received */
+    }
+    break;
+  }
+  return(Ret);
 }
 
 uint8_t RcRxSerial::read()
