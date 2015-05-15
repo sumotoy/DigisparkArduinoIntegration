@@ -25,6 +25,7 @@ Supported Arduinos:
 * **ATtiny84 (Standalone)**
 * **ATtiny85 (Standalone or Digispark)**
 * **ATtiny167 (Digispark pro)**
+* **ATmega32U4 (Leonardo, micro, pro micro)**
 
 Tip and Tricks:
 --------------
@@ -50,6 +51,12 @@ On the arduino MEGA, as all the pins do not support "pin change interrupt", only
 * 10 -> 15
 * 50 -> 53
 * A8 -> A15
+
+On the arduino Leonardo, micro and pro micro, as all the pins do not support "pin change interrupt", only the following pins are supported:
+
+* 0 -> 3 (external INT0, INT1, INT2 and INT3 are used as emulated Pin Change Interrupt)
+* 8 -> 11
+* 14 -> 17
 
 On other devices (ATmega328, ATtiny84, ATtiny85 and ATtiny167), all the pins are usable.
 

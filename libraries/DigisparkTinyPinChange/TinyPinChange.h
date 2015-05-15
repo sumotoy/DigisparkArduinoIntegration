@@ -3,7 +3,7 @@
 
 /*
 * <TinyPinChange>, a library for Pin Change Interrupt by RC Navy (2012)
-* Supported devices: ATmega238P (UNO), ATmega2560 (MEGA), ATtiny84, ATtiny85, ATtiny167
+* Supported devices: ATmega238P (UNO), ATmega2560 (MEGA), ATtiny84, ATtiny85, ATtiny167, ATmega32U4
 * 
 * http://p.loussouarn.free.fr
 * 20/04/2014: Support for MEGA added
@@ -12,6 +12,8 @@
 *             TinyPinChange_GetPinEvent() replaced with TinyPinChange_GetPortEvent()
 *             TinyPinChange_GetPinCurSt() replaced with TinyPinChange_GetCurPortSt()
 * 01/02/2015: Fix a bug on TinyPinChange_FallingEdge() method
+* 15/05/2015: Support for ATmega32U4 (Leonardo, micro, pro micro) added
+*             INT0, INT1, INT2, INT3 used as emulated Pin Change Interrupt
 */
 
 #if defined(ARDUINO) && ARDUINO >= 100
@@ -74,6 +76,15 @@
 #define PC_PIN1					PINB
 #define PC_PCMSK1				PCMSK1
 #else
+#if defined(__AVR_ATmega32U4__)
+/* Leonardo, micro, pro micro */
+#define PIN_CHG_PORT_NB			2 /* The second one is emulated using external Interrupts */
+#define DigitalPinToPortIdx(p)  ((((p) >= 8 && (p) <= 11) || ((p) >= 14 && (p) <= 17)) ? (0) : (1))
+#define PC_PIN0					PINB
+#define PC_PCMSK0				PCMSK0
+#define PC_PIN1					PIND
+#define PC_PCMSK1				0x0F /* INT0, INT1, INT2, INT3 used as emulated Pin Change Interrupts */
+#else
 /* UNO */
 #define PIN_CHG_PORT_NB			3
 #define DigitalPinToPortIdx(p)  (((p) <= 7) ? (2) : (((p) <= 13) ? (0) : (((p) <= 21) ? (1) : (0))))
@@ -83,6 +94,7 @@
 #define PC_PCMSK1				PCMSK1
 #define PC_PIN2					PIND
 #define PC_PCMSK2				PCMSK2
+#endif
 #endif
 #endif
 #endif

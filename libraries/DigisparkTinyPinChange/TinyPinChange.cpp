@@ -1,7 +1,8 @@
 /********************************************************************************/
-/* PROJECT:   All based on ATtinyX5, ATtinyX4, Atiny167, ATmega328P, ATmega2560 */
+/* PROJECT:   All based on ATtinyX5, ATtinyX4, Atiny167, ATmega328P, ATmega2560,*/
+/*            ATmega32U4.                                                       */
 /* MODULE:    TinyPinChange                                                     */
-/* VERSION:   1.3 (01/02/2015)                                                  */
+/* VERSION:   1.4 (15/05/2015)                                                  */
 /* DATE:      30/01/2011                                                        */
 /* TARGET:    ATtinyX5, ATtinyX4, ATtiny167, ATmega328P, ATmega2560             */
 /* COMPILER:  WinAvr, avr-gcc, avr-g++                                          */
@@ -16,8 +17,11 @@
 								MACROS
 *************************************************************************/
 
+#if defined(__AVR_ATmega32U4__)
+#define PIN_CHANGE_HANDLER_MAX_NB	4	/* ISR max number Pin Change ISR can handle per port (INT0, INT1, INT2, INT3 for ATmega32U4) */
+#else
 #define PIN_CHANGE_HANDLER_MAX_NB	3	/* ISR max number Pin Change ISR can handle per port */
-
+#endif
 
 /*************************************************************************
 							GLOBAL VARIABLES
@@ -38,20 +42,28 @@ struct PinChangePortStruct
 
 static volatile struct PinChangePortStruct	PinChange;
 
+#if defined(__AVR_ATmega32U4__)
+#define PinToExtInt(p)		(((p) >= 2 ) ? (3 - (p)) : ((p) + 2))
+static void ExtInt0AsEmulatedPinChangeInt(void);
+static void ExtInt1AsEmulatedPinChangeInt(void);
+static void ExtInt2AsEmulatedPinChangeInt(void);
+static void ExtInt3AsEmulatedPinChangeInt(void);
+#endif
+
 /*************************************************************************
 							INTERRUPT SUB-ROUTINE
 *************************************************************************/
-#define DECLARE_PIN_CHANGE_ISR(VirtualPortIdx)																			\
-ISR(PCINT##VirtualPortIdx##_vect)																						\
-{																														\
-uint8_t Idx;																											\
-	PinChange.Port[VirtualPortIdx].PinCur = (PC_PIN##VirtualPortIdx) & (PC_PCMSK##VirtualPortIdx);							\
-	PinChange.Port[VirtualPortIdx].Event = PinChange.Port[VirtualPortIdx].PinPrev ^ PinChange.Port[VirtualPortIdx].PinCur;	\
-	PinChange.Port[VirtualPortIdx].PinPrev = PinChange.Port[VirtualPortIdx].PinCur;										\
-	for(Idx = 0; Idx < PinChange.Port[VirtualPortIdx].LoadedIsrNb; Idx++)														\
-	{																													\
-		PinChange.Port[VirtualPortIdx].Isr[Idx]();																		\
-	}																													\
+#define DECLARE_PIN_CHANGE_ISR(VirtualPortIdx)                                                                             \
+ISR(PCINT##VirtualPortIdx##_vect)                                                                                          \
+{                                                                                                                          \
+  uint8_t Idx;                                                                                                             \
+  PinChange.Port[VirtualPortIdx].PinCur  = (PC_PIN##VirtualPortIdx) & (PC_PCMSK##VirtualPortIdx);                          \
+  PinChange.Port[VirtualPortIdx].Event   = PinChange.Port[VirtualPortIdx].PinPrev ^ PinChange.Port[VirtualPortIdx].PinCur; \
+  PinChange.Port[VirtualPortIdx].PinPrev = PinChange.Port[VirtualPortIdx].PinCur;                                          \
+  for(Idx = 0; Idx < PinChange.Port[VirtualPortIdx].LoadedIsrNb; Idx++)                                                    \
+  {                                                                                                                        \
+    PinChange.Port[VirtualPortIdx].Isr[Idx]();                                                                             \
+  }                                                                                                                        \
 }
 
 DECLARE_PIN_CHANGE_ISR(0)
@@ -65,7 +77,7 @@ DECLARE_PIN_CHANGE_ISR(2)
 #endif
 
 /*************************************************************************
-							PUBLIC FUNCTIONS
+			PUBLIC FUNCTIONS
 *************************************************************************/
 
 /*********************************************************************
@@ -78,7 +90,7 @@ Output:
 void TinyPinChange_Init(void)
 {
 /* ATtinyX5, ATtiny167, ATtinyX4, UNO, MEGA */
-	PinChange.Port[0].PinCur = PC_PIN0 & PC_PCMSK0;//PINB for ATtinyX5, UNO or MEGA, PINA for ATtinyX4 or ATtiny167
+	PinChange.Port[0].PinCur = PC_PIN0 & PC_PCMSK0;//PINB for ATtinyX5, UNO or MEGA, PINA for ATtinyX4 or ATtiny167, PINB for ATmega32U4 (Leonardo, micro, pro micro)
 	PinChange.Port[0].PinPrev = PinChange.Port[0].PinCur;
 #if defined(__AVR_ATtinyX4__) || defined(__AVR_ATtiny167__) || defined(__AVR_ATmega328P__) || defined(__AVR_ATmega2560__)
 /* ATtinyX4, ATtiny167, UNO or MEGA */
@@ -89,6 +101,11 @@ void TinyPinChange_Init(void)
 /* UNO or MEGA */
 	PinChange.Port[2].PinCur = PC_PIN2 & PC_PCMSK2;//PIND for UNO, PINK for MEGA
 	PinChange.Port[2].PinPrev = PinChange.Port[2].PinCur;
+#endif
+#if defined(__AVR_ATmega32U4__)
+/* ATmega32U4 (Leonardo, micro, pro micro) */
+	PinChange.Port[1].PinCur = PC_PIN1 & PC_PCMSK1;//PIND for for ATmega32U4 (Leonardo, micro, pro micro)
+	PinChange.Port[1].PinPrev = PinChange.Port[1].PinCur;
 #endif
 }
 
@@ -106,25 +123,58 @@ int8_t IsrIdx, PortIdx, AlreadyLoaded = 0;
 
 	PortIdx = DigitalPinToPortIdx(Pin);
 
-	for(IsrIdx = 0; IsrIdx < PIN_CHANGE_HANDLER_MAX_NB; IsrIdx++)
+#if defined(__AVR_ATmega32U4__)
+	if(Pin >= 0 && Pin <= 3)
 	{
-		if(PinChange.Port[PortIdx].Isr[IsrIdx] == Isr)
-		{
-			AlreadyLoaded = 1;
-			break; /* Already loaded */
-		}
+	  /* INT0, INT1, INT2, INT3 used as emulated Pin Change Interrupt */
+	  switch(PinToExtInt(Pin))
+	  {
+	    case 0: /* Ext INT0 */
+	    PinChange.Port[PortIdx].Isr[0] = Isr;
+	    attachInterrupt(0, ExtInt0AsEmulatedPinChangeInt, CHANGE);
+	    break;
+	    
+	    case 1: /* Ext INT1 */
+	    PinChange.Port[PortIdx].Isr[1] = Isr;
+	    attachInterrupt(1, ExtInt1AsEmulatedPinChangeInt, CHANGE);
+	    break;
+	    
+	    case 2: /* Ext INT2 */
+	    PinChange.Port[PortIdx].Isr[2] = Isr;
+	    attachInterrupt(2, ExtInt2AsEmulatedPinChangeInt, CHANGE);
+	    break;
+	    
+	    case 3: /* Ext INT3 */
+	    PinChange.Port[PortIdx].Isr[3] = Isr;
+	    attachInterrupt(3, ExtInt3AsEmulatedPinChangeInt, CHANGE);
+	    break;
+	  }
 	}
-	
-	if(!AlreadyLoaded)
+	else
 	{
-		if(PinChange.Port[PortIdx].LoadedIsrNb < PIN_CHANGE_HANDLER_MAX_NB)
-		{
-			/* Not aready loaded: load it */
-			PinChange.Port[PortIdx].Isr[PinChange.Port[PortIdx].LoadedIsrNb] = Isr;
-			PinChange.Port[PortIdx].LoadedIsrNb++;
-		}
-		else PortIdx = -1; /* Failure */
+#endif
+	  for(IsrIdx = 0; IsrIdx < PIN_CHANGE_HANDLER_MAX_NB; IsrIdx++)
+	  {
+	    if(PinChange.Port[PortIdx].Isr[IsrIdx] == Isr)
+	    {
+	      AlreadyLoaded = 1;
+	      break; /* Already loaded */
+	    }
+	  }
+	  
+	  if(!AlreadyLoaded)
+	  {
+	    if(PinChange.Port[PortIdx].LoadedIsrNb < PIN_CHANGE_HANDLER_MAX_NB)
+	    {
+	      /* Not aready loaded: load it */
+	      PinChange.Port[PortIdx].Isr[PinChange.Port[PortIdx].LoadedIsrNb] = Isr;
+	      PinChange.Port[PortIdx].LoadedIsrNb++;
+	    }
+	    else PortIdx = -1; /* Failure */
+	  }
+#if defined(__AVR_ATmega32U4__)
 	}
+#endif
 	return(PortIdx);
 }
 
@@ -137,11 +187,26 @@ Output:
 *********************************************************************/
 void TinyPinChange_EnablePin(uint8_t Pin)
 {
+#if defined(__AVR_ATmega32U4__)
+    if(Pin <= 3)
+    {
+      EIMSK |= (1 << PinToExtInt(Pin));      
+    }
+    else
+    {
+      if(digitalPinToPCICR(Pin))
+      {
+	*digitalPinToPCICR(Pin) |= _BV(digitalPinToPCICRbit(Pin));
+	*digitalPinToPCMSK(Pin) |= _BV(digitalPinToPCMSKbit(Pin));
+      }
+    }
+#else
     if(digitalPinToPCICR(Pin))
     {
       *digitalPinToPCICR(Pin) |= _BV(digitalPinToPCICRbit(Pin));
       *digitalPinToPCMSK(Pin) |= _BV(digitalPinToPCMSKbit(Pin));
     }
+#endif
 }
 
 /*********************************************************************
@@ -153,10 +218,24 @@ Output:
 *********************************************************************/
 void TinyPinChange_DisablePin(uint8_t Pin)
 {
+#if defined(__AVR_ATmega32U4__)
+    if(Pin <= 3)
+    {
+      EIMSK &= ~(1 << PinToExtInt(Pin));      
+    }
+    else
+    {
+      if(digitalPinToPCICR(Pin))
+      {
+	    *digitalPinToPCMSK(Pin) &= (_BV(digitalPinToPCMSKbit(Pin)) ^ 0xFF);
+      }
+    }
+#else
     if(digitalPinToPCICR(Pin))
     {
 	  *digitalPinToPCMSK(Pin) &= (_BV(digitalPinToPCMSKbit(Pin)) ^ 0xFF);
     }
+#endif
 }
 
 /*********************************************************************
@@ -182,3 +261,21 @@ uint8_t TinyPinChange_GetCurPortSt(uint8_t VirtualPortIdx)
 {
 	return(PinChange.Port[VirtualPortIdx].PinCur);
 }
+
+/*************************************************************************
+			PRIVATE FUNCTIONS
+*************************************************************************/
+#if defined(__AVR_ATmega32U4__)
+#define DECLARE_EXT_INT_AS_PIN_CHANGE_INT(ExtIntIdx)                                \
+static void ExtInt##ExtIntIdx##AsEmulatedPinChangeInt(void)                         \
+{                                                                                   \
+  PinChange.Port[1].PinCur  = (PC_PIN1) & (1 << (ExtIntIdx));                       \
+  PinChange.Port[1].Event   = PinChange.Port[1].PinPrev ^ PinChange.Port[1].PinCur; \
+  PinChange.Port[1].PinPrev = PinChange.Port[1].PinCur;                             \
+  PinChange.Port[1].Isr[(ExtIntIdx)]();                                             \
+}
+DECLARE_EXT_INT_AS_PIN_CHANGE_INT(0)
+DECLARE_EXT_INT_AS_PIN_CHANGE_INT(1)
+DECLARE_EXT_INT_AS_PIN_CHANGE_INT(2)
+DECLARE_EXT_INT_AS_PIN_CHANGE_INT(3)
+#endif
