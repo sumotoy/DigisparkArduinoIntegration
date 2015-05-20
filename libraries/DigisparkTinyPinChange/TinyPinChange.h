@@ -50,7 +50,7 @@
 #ifdef __AVR_ATtinyX4__
 /* ATtinyX4 */
 #define PIN_CHG_PORT_NB			2
-#define DigitalPinToPortIdx(p)  (((p) <= 7) ? (0) : (((p) <= 10) ? (1) : (0)))
+#define DigitalPinToPortIdx(p)   ((digitalPinToPCICRbit(p)==PCIE0) ?0:1)
 #define PC_PIN0					PINA
 #define PC_PCMSK0				PCMSK0
 #define PC_PIN1					PINB
