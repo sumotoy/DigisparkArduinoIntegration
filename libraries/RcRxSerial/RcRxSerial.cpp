@@ -77,8 +77,13 @@ static int8_t PulseWithToNibbleIdx(uint16_t PulseWidth);
 /* Constructor */
 RcRxSerial::RcRxSerial(RcRxPop *RcRxPop, uint8_t Ch /*= 255*/)
 {
-	_RcRxPop = RcRxPop;
+	reassignRcRxPopSrc(RcRxPop, Ch);
+}
+
+void RcRxSerial::reassignRcRxPopSrc(RcRxPop *RcRxPop, uint8_t Ch /*= 255*/)
+{
 	_Ch = Ch;
+	_RcRxPop = RcRxPop;
 	_available = 0;
 	_Nibble = 0;
 	_NibbleAvailable = 0;

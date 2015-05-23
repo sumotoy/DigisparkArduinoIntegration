@@ -33,6 +33,7 @@ class RcRxSerial
     uint8_t  available();
     uint8_t  msgAvailable(char *RxBuf, uint8_t RxBufMaxLen);
     uint8_t  read();
+    void     reassignRcRxPopSrc(RcRxPop *RcRxPop, uint8_t Ch = 255); /* Marginal use (do not use it, if you do not know what is it for) */
     uint16_t lastWidth_us();     /* Only for calibration purpose */
     uint8_t  nibbleAvailable();  /* Only for calibration purpose */
 };
