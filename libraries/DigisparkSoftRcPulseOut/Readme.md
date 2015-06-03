@@ -3,7 +3,7 @@ SoftRcPulseOut library
 
 **SoftRcPulseOut** is pseudo-asynchronous library designed to generate RC pulse signals. RC pulse signals are intended to command servos, **E**lectronic **S**peed **C**ontrollers (**ESC**), Brushless Controllers and any devices expecting such a command signal.
 Static and dynamic object allocation are both supported.
-Dynamic deallocation is supported for **SoftRcPulseOut** allocated dynamically.
+Dynamic deallocation is supported for **SoftRcPulseOut** instance allocated dynamically.
 
 Some examples of use cases:
 -------------------------
@@ -27,7 +27,7 @@ Develop your project on an arduino UNO or MEGA, and then shrink it by loading th
 API/methods:
 -----------
 * The **SoftRcPulseOut** library uses the same API as the regular **SoftwareServo** library:
-	* **attach()**: attache the SoftRcPulseOut object to a pin
+	* **attach()**: attaches the SoftRcPulseOut object to a pin
 	* **attached()**: returns if attached
 	* **detach()**: detaches the SoftRcPulseOut object from a pin
 	* **write()**: write angle in degrees
@@ -45,7 +45,7 @@ API/methods:
 	* **createdInstanceNb()**: returns the number of created instances (including static instances)
 	* **softRcPulseOutById()**: returns a pointer on the corresponding SoftRcPulseOut object
 	* **getIdByPin()**: returns the Id of the instance attached to a pin
-	* **destroyInstanceNb()**: destroys a dynamically created instance (instance statically created cannot be destroyed)
+	* **destroyInstance()**: destroys a dynamically created instance (instance statically created cannot be destroyed)
 
 * Methods for version management:
 	* **LibVersion()**: returns the library version
