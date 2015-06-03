@@ -3,8 +3,10 @@
  Update 01/03/2013: add support for Digispark (http://digistump.com): automatic Timer selection (RC Navy: p.loussouarn.free.fr)
  Update 19/08/2014: usage with write_us and read_us fixed
  Update 06/04/2015: RcTxPop support added (allows to create a virtual serial port over a PPM channel)
-
- English: by RC Navy (2012)
+ Update 03/06/2015: add support for dynamic object creation/destruction
+                   (createInstance, destroyInstance, createdInstanceNbmethods, softRcPulseOutById and getIdByPin methods added)
+ 
+ English: by RC Navy (2012) 
  =======
  <SoftRcPulseOut>: a library mainly based on the <SoftwareServo> library, but with a better pulse generation to limit jitter.
  It supports the same methods as <SoftwareServo>.
@@ -36,10 +38,26 @@
 
 SoftRcPulseOut *SoftRcPulseOut::first;
 
-#define NO_ANGLE (0xff)
+typedef struct{
+  uint8_t
+    Total:       4,
+    Dynamically: 4;  
+}ObjectCreatedSt_t;
 
-SoftRcPulseOut::SoftRcPulseOut() : pin(0), angle(NO_ANGLE), pulse0(0), min16(34), max16(150), next(0)
-{}
+static ObjectCreatedSt_t ObjectCreated = {0, 0};
+
+#define NO_ANGLE                           (0xff)
+#define NOT_ATTACHED                       (0xff)
+#define SOFT_RC_PULSE_OUT_INSTANCE_MAX_NB  15 /* Counter on 4 bits */
+
+SoftRcPulseOut::SoftRcPulseOut()
+{
+  pin    = NOT_ATTACHED;
+  pulse0 = 0;
+  next   = first;
+  first  = this;
+  ObjectCreated.Total++;
+}
 
 void SoftRcPulseOut::setMinimumPulse(uint16_t t)
 {
@@ -51,13 +69,100 @@ void SoftRcPulseOut::setMaximumPulse(uint16_t t)
     max16 = t / 16;
 }
 
+int8_t SoftRcPulseOut::createInstance(void)
+{
+  int8_t Ret = -1; /* In case of failure */
+  SoftRcPulseOut *p;
+  
+  if(ObjectCreated.Total < SOFT_RC_PULSE_OUT_INSTANCE_MAX_NB)
+  {
+    p = new SoftRcPulseOut; /* new calls the constructor which increments ObjectCreated */
+    if(p)
+    {
+      ObjectCreated.Dynamically++;
+      Ret = ObjectCreated.Total - 1;
+    }
+  }
+  return(Ret);
+}
+
+uint8_t SoftRcPulseOut::createdInstanceNb(void)
+{
+  return(ObjectCreated.Total);
+}
+
+uint8_t SoftRcPulseOut::destroyInstance(uint8_t ObjIdx)
+{
+  int8_t Idx, Ret = 0;
+  SoftRcPulseOut *This;
+
+  if((ObjIdx >= (ObjectCreated.Total - ObjectCreated.Dynamically)) && (ObjIdx < ObjectCreated.Total))
+  {
+    This = softRcPulseOutById(ObjIdx);
+    if(!This->attached())
+    {
+      for ( SoftRcPulseOut **p = &first; *p != 0; p = &((*p)->next) )
+      {
+	if ( *p == This )
+	{
+	  *p = This->next;
+	  This->next = 0;
+	  delete(This);
+	  ObjectCreated.Dynamically--;
+	  ObjectCreated.Total--;
+	  Ret = 1;
+	  break;
+	}
+      }
+    }
+  }
+  return(Ret);
+}
+
+SoftRcPulseOut *SoftRcPulseOut::softRcPulseOutById(uint8_t ObjIdx)
+{
+  int8_t Idx;
+  SoftRcPulseOut *p;
+  
+  if(ObjIdx < ObjectCreated.Total)
+  {
+    Idx = ObjectCreated.Total - ObjIdx -1;
+    if(Idx >= 0)
+    {
+      p = first;
+      for(uint8_t i = 0; i < Idx ;i++)
+      {
+	p = p->next;
+      }
+      return(p);
+    }
+  }
+  return(NULL);  
+}  
+
+int8_t SoftRcPulseOut::getIdByPin(uint8_t Pin)
+{
+  int8_t Idx =0, Id = -1;
+  SoftRcPulseOut *p;
+  
+  for ( p = first; p != 0; p = p->next )
+  {
+    Idx++;
+    if( p->pin == Pin)
+    {
+      Id = ObjectCreated.Total - Idx;
+      break;
+    }
+  }
+  return(Id);
+}
+
 uint8_t SoftRcPulseOut::attach(int pinArg)
 {
     pin    = pinArg;
     angle  = NO_ANGLE;
-    pulse0 = 0;
-    next   = first;
-    first  = this;
+    min16  = 34;
+    max16  = 150;
     digitalWrite(pin, LOW);
     pinMode(pin, OUTPUT);
     return (1);
@@ -65,21 +170,13 @@ uint8_t SoftRcPulseOut::attach(int pinArg)
 
 void SoftRcPulseOut::detach()
 {
-  for ( SoftRcPulseOut **p = &first; *p != 0; p = &((*p)->next) )
-  {
-    if ( *p == this )
-    {
-      *p = this->next;
-      this->next = 0;
-      return;
-    }
-  }
+  pin    = NOT_ATTACHED;
 }
 
 void SoftRcPulseOut::write(int angleArg)
 {
-    if ( angleArg < 0)   angleArg = 0;
-    if ( angleArg > 180) angleArg = 180;
+    if (angleArg < 0)   angleArg = 0;
+    if (angleArg > 180) angleArg = 180;
     angle = angleArg;
     // bleh, have to use longs to prevent overflow, could be tricky if always a 16MHz clock, but not true
     // That 64L on the end is the TCNT0 prescaler, it will need to change if the clock's prescaler changes,
@@ -119,11 +216,7 @@ uint16_t SoftRcPulseOut::read_us()
 
 uint8_t SoftRcPulseOut::attached()
 {
-  for ( SoftRcPulseOut *p = first; p != 0; p = p->next )
-  {
-    if ( p == this) return (1);
-  }
-  return (0);
+  return(pin != NOT_ATTACHED);
 }
 
 /* Begin of RcTxPop support */
@@ -156,12 +249,12 @@ uint8_t SoftRcPulseOut::refresh(bool force /* = false */)
   RefreshDone = 1; //Ok: Refresh will be performed
   lastRefresh = m;
 
-  for ( p = first; p != 0; p = p->next ) if ( p->pulse0 ) count++;
+  for ( p = first; p != 0; p = p->next ) if ( p->pin != NOT_ATTACHED ) count++;
   if ( count == 0 ) return(RefreshDone);
 
   // gather all the SoftRcPulseOuts in an array
   SoftRcPulseOut *s[count];
-  for ( p = first; p != 0; p = p->next ) if ( p->pulse0) s[i++] = p;
+  for ( p = first; p != 0; p = p->next ) if ( p->pin != NOT_ATTACHED ) s[i++] = p;
 
   // bubblesort the SoftRcPulseOuts by pulse time, ascending order
   s[0]->ItMasked = 0;

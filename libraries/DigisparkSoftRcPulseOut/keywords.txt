@@ -31,6 +31,11 @@ setMaximumPulse	KEYWORD2
 definitImpulsionMaximum	KEYWORD2
 refresh	KEYWORD2
 rafraichit	KEYWORD2
+createInstance	KEYWORD2
+createdInstanceNb	KEYWORD2
+softRcPulseOutById	KEYWORD2
+getIdByPin	KEYWORD2
+destroyInstance	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
