@@ -73,11 +73,16 @@ B) Command from a ON/OFF switch:
 /*************************************************/
 /* STEP #1: Include the required libraries       */
 /*************************************************/
+#include <EEPROM.h>
+
 #include <RcSeq.h>
+
 #include <TinyPinChange.h>
 #include <SoftRcPulseIn.h>
+#include <RcRxPop.h>
+
 #include <SoftRcPulseOut.h>
-#include <EEPROM.h>
+#include <RcTxPop.h>
 
 /*****************************************************************/
 /* STEP #2: Enumeration of the RC Signals used in the sequence   */
@@ -176,28 +181,28 @@ Order                  <--------CLOSING_DURATION_RIGHT_MS------->
 /********************************************************************************************************************/
 /* STEP #10: Declare here the percentage of motion to be performed at half speed for servo start up and stop        */
 /********************************************************************************************************************/
-#define START_STOP_PER_CENT                 5 /* Percentage of motion performed at half-speed for starting and stopping the servos (Soft start et Soft stop) */
+#define START_STOP_PER_CENT            5 /* Percentage of motion performed at half-speed for starting and stopping the servos (Soft start et Soft stop) */
 
 /************************************************************************************************************/
 /* STEP #11: Use a "const SequenceSt_t" structure table to declare the servo sequence                       */
 /* For each table entry, arguments are:                                                                     */
-/* - Servo Index                                                                                            */
-/* - Initial Servo Position in °                                                                            */
-/* - Final   Servo Position in °                                                                            */
+/* - Servo Pin                                                                                              */
+/* - Initial Servo Position in us (Macro DEG2US() can be used to convert from ° to us)                      */
+/* - Final   Servo Position in us (Macro DEG2US() can be used to convert from ° to us)                      */
 /* - Motion Start Time Stamp in ms                                                                          */
 /* - Motion duration in ms between initial and final position                                               */
 /* - Percentage of motion performed at half speed for servo start and servo stop (Soft start and Soft stop) */
 /************************************************************************************************************/
 /* Table describing the motions of the 2 servos for opening the 2 doors */
-const SequenceSt_t OpeningSequence[] PROGMEM = {/*     Servo Id ,  Initial Angle             , Final Angle                , Delay after order     , Motion Duration          , Percentage at half speed */
-/* 1st Servo */ MOTION_WITH_SOFT_START_AND_STOP(DOOR_SERVO_LEFT,  DOOR_SERVO_CLOSED_LEFT_POS,  DOOR_SERVO_OPENED_LEFT_POS,  OPENING_START_LEFT_MS,  OPENING_DURATION_LEFT_MS,  START_STOP_PER_CENT)
-/* 2nd Servo */ MOTION_WITH_SOFT_START_AND_STOP(DOOR_SERVO_RIGHT, DOOR_SERVO_CLOSED_RIGHT_POS, DOOR_SERVO_OPENED_RIGHT_POS, OPENING_START_RIGHT_MS, OPENING_DURATION_RIGHT_MS, START_STOP_PER_CENT)
+const SequenceSt_t OpeningSequence[] PROGMEM = {/*     Servo Id    ,  Initial Angle                       , Final Angle                       , Delay after order     , Motion Duration          , Percentage at half speed */
+/* 1st Servo */ MOTION_WITH_SOFT_START_AND_STOP(DOOR_SERVO_LEFT_PIN,  DEG2US(DOOR_SERVO_CLOSED_LEFT_POS),  DEG2US(DOOR_SERVO_OPENED_LEFT_POS), OPENING_START_LEFT_MS,  OPENING_DURATION_LEFT_MS,  START_STOP_PER_CENT)
+/* 2nd Servo */ MOTION_WITH_SOFT_START_AND_STOP(DOOR_SERVO_RIGHT_PIN, DEG2US(DOOR_SERVO_CLOSED_RIGHT_POS), DEG2US(DOOR_SERVO_OPENED_RIGHT_POS), OPENING_START_RIGHT_MS, OPENING_DURATION_RIGHT_MS, START_STOP_PER_CENT)
                 };
 
 /* Table describing the motions of the 2 servos for closing the 2 doors */
-const SequenceSt_t ClosingSequence[] PROGMEM = {/*    Servo Id  ,  Initial Angle             , Final Angle                , Delai after order     , Motion Duration          , Percentage at half speed */
-/* 1st Servo */ MOTION_WITH_SOFT_START_AND_STOP(DOOR_SERVO_LEFT,  DOOR_SERVO_OPENED_LEFT_POS,  DOOR_SERVO_CLOSED_LEFT_POS,  CLOSING_START_LEFT_MS,  CLOSING_DURATION_LEFT_MS,  START_STOP_PER_CENT)
-/* 2nd Servo */ MOTION_WITH_SOFT_START_AND_STOP(DOOR_SERVO_RIGHT, DOOR_SERVO_OPENED_RIGHT_POS, DOOR_SERVO_CLOSED_RIGHT_POS, CLOSING_START_RIGHT_MS, CLOSING_DURATION_RIGHT_MS, START_STOP_PER_CENT)
+const SequenceSt_t ClosingSequence[] PROGMEM = {/*    Servo Id     ,  Initial Angle                       , Final Angle                        , Delai after order     , Motion Duration          , Percentage at half speed */
+/* 1st Servo */ MOTION_WITH_SOFT_START_AND_STOP(DOOR_SERVO_LEFT_PIN,  DEG2US(DOOR_SERVO_OPENED_LEFT_POS),  DEG2US(DOOR_SERVO_CLOSED_LEFT_POS),  CLOSING_START_LEFT_MS,  CLOSING_DURATION_LEFT_MS,  START_STOP_PER_CENT)
+/* 2nd Servo */ MOTION_WITH_SOFT_START_AND_STOP(DOOR_SERVO_RIGHT_PIN, DEG2US(DOOR_SERVO_OPENED_RIGHT_POS), DEG2US(DOOR_SERVO_CLOSED_RIGHT_POS), CLOSING_START_RIGHT_MS, CLOSING_DURATION_RIGHT_MS, START_STOP_PER_CENT)
                 };
 
 enum {COMMAND_OPEN = 0, COMMAND_CLOSE};
@@ -210,7 +215,7 @@ void setup()
   
   #if !defined(__AVR_ATtiny24__) && !defined(__AVR_ATtiny44__) && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny25__) && !defined(__AVR_ATtiny45__) && !defined(__AVR_ATtiny85__) && !defined(__AVR_ATtiny167__)
   Serial.begin(9600);
-  Serial.print(F("RcSeq library V"));Serial.print(RcSeq_LibTextVersionRevision());Serial.println(F(" demo: advanced doors sequences"));
+  Serial.print(F("RcSeq library V"));Serial.print(RC_SEQ_LIB_VERSION);Serial.print(F("."));Serial.print(RC_SEQ_LIB_REVISION);Serial.println(F(" demo: advanced doors sequences"));
   #endif
 
   /***************************************************************************/

@@ -34,12 +34,15 @@ Cette sequence utilise:
 #include <RcSeq.h>
 #include <TinyPinChange.h>
 #include <SoftRcPulseIn.h>
+#include <RcRxPop.h>
+
 #include <SoftRcPulseOut.h>
+#include <RcTxPop.h>
 
 /*****************************************************/
 /* ETAPE N°2: Enumeration des signaux de commande RC */
 /*****************************************************/
-enum {SIGNAL_RC=0, NBR_SIGNAL}; /* Delaration de tous les signaux de commande (sortie voie du recepteur), un seul dans cet exemple */
+enum {SIGNAL_RC = 0, NBR_SIGNAL}; /* Delaration de tous les signaux de commande (sortie voie du recepteur), un seul dans cet exemple */
 
 /****************************************************************/
 /* ETAPE N°3: Enumeration des differentes position du manche RC */
@@ -49,7 +52,7 @@ enum {RC_IMPULSION_NIVEAU_MOINS_2, RC_IMPULSION_NIVEAU_MOINS_1, RC_IMPULSION_NIV
 /*****************************************************************/
 /* ETAPE N°4: Enumeration des servos utilisés pour les sequences */
 /*****************************************************************/
-enum {AZIMUT=0, ELEVATION , NBR_SERVO}; /* Delaration de tous les servos, 2 dans cet exemple */
+enum {AZIMUT = 0, ELEVATION , NBR_SERVO}; /* Delaration de tous les servos, 2 dans cet exemple */
 
 /*********************************************************************************/
 /* ETAPE N°5: Affectation des broches Digitales (PIN) des signaux de commande RC */
@@ -66,7 +69,7 @@ enum {AZIMUT=0, ELEVATION , NBR_SERVO}; /* Delaration de tous les servos, 2 dans
 /* ETAPE N°7: Declaration des angles des servos pour les differents mouvements (en °) */
 /**************************************************************************************/
 #define ELEVATION_POS_PONT              120 /* position zodiac sur pont   (Pos A) */
-#define ELEVATION_POS_HAUT              180 /* position zodiac en haut    (Pos B) */
+#define ELEVATION_POS_HAUT              160 /* position zodiac en haut    (Pos B) */
 #define ELEVATION_POS_MER               0   /* position zodiac dans l'eau (pos C) */
 
 #define AZIMUT_POS_PONT                 90 /* position rotation sur pont */
@@ -122,22 +125,22 @@ Ordre                  <---DUREE_MONTEE_PONT_HAUT_MS--> <--DUREE_ROTATION_PONT_M
 /* moment ou l'action doit avoir lieu. Dans cet exemple, la LED s'allume pendant que les servos tournent et s'eteint pendant la pause de 6 secondes.           */
 /***************************************************************************************************************************************************************/
 const SequenceSt_t SequencePlus2[] PROGMEM = {
-	ACTION_COURTE_A_EFFECTUER(InverseLed, DEMARRAGE_MONTEE_PONT_HAUT_MS)
+	ACTION_COURTE_A_EFFECTUER(InverseLed,      DEMARRAGE_MONTEE_PONT_HAUT_MS)
 	/* Montee du Zodiac du pont vers la position haute */
-	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(ELEVATION, ELEVATION_POS_PONT, ELEVATION_POS_HAUT, DEMARRAGE_MONTEE_PONT_HAUT_MS, DUREE_MONTEE_PONT_HAUT_MS, DEM_ARRET_POUR_CENT)
+	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(BROCHE_SIGNAL_SERVO_EL, DEG2US(ELEVATION_POS_PONT), DEG2US(ELEVATION_POS_HAUT),  DEMARRAGE_MONTEE_PONT_HAUT_MS,   DUREE_MONTEE_PONT_HAUT_MS, DEM_ARRET_POUR_CENT)
 	/* Rotation Grue du pont vers la mer */
-	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(AZIMUT, AZIMUT_POS_PONT, AZIMUT_POS_MER, DEMARRAGE_ROTATION_PONT_MER_MS, DUREE_ROTATION_PONT_MER_MS, DEM_ARRET_POUR_CENT)
+	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(BROCHE_SIGNAL_SERVO_AZ, DEG2US(AZIMUT_POS_PONT),    DEG2US(AZIMUT_POS_MER),      DEMARRAGE_ROTATION_PONT_MER_MS,  DUREE_ROTATION_PONT_MER_MS, DEM_ARRET_POUR_CENT)
 	/* Descente du Zodiac depuis la position haute vers la la mer */
-	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(ELEVATION, ELEVATION_POS_HAUT, ELEVATION_POS_MER, DEMARRAGE_DESCENTE_HAUT_MER_MS, DUREE_DESCENTE_HAUT_MER_MS, DEM_ARRET_POUR_CENT)
-	ACTION_COURTE_A_EFFECTUER(InverseLed, DEMARRAGE_DESCENTE_HAUT_MER_MS + DUREE_DESCENTE_HAUT_MER_MS)
-	ACTION_COURTE_A_EFFECTUER(InverseLed, DEMARRAGE_MONTEE_MER_HAUT_MS)
+	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(BROCHE_SIGNAL_SERVO_EL, DEG2US(ELEVATION_POS_HAUT), DEG2US(ELEVATION_POS_MER),   DEMARRAGE_DESCENTE_HAUT_MER_MS,  DUREE_DESCENTE_HAUT_MER_MS, DEM_ARRET_POUR_CENT)
+	ACTION_COURTE_A_EFFECTUER(InverseLed,      DEMARRAGE_DESCENTE_HAUT_MER_MS + DUREE_DESCENTE_HAUT_MER_MS)
+	ACTION_COURTE_A_EFFECTUER(InverseLed,      DEMARRAGE_MONTEE_MER_HAUT_MS)
 	/* Montee du Zodiac de la mer vers la position haute */
-	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(ELEVATION, ELEVATION_POS_MER, ELEVATION_POS_HAUT, DEMARRAGE_MONTEE_MER_HAUT_MS, DUREE_MONTEE_MER_HAUT_MS, DEM_ARRET_POUR_CENT)
+	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(BROCHE_SIGNAL_SERVO_EL, DEG2US(ELEVATION_POS_MER),  DEG2US(ELEVATION_POS_HAUT),  DEMARRAGE_MONTEE_MER_HAUT_MS,    DUREE_MONTEE_MER_HAUT_MS, DEM_ARRET_POUR_CENT)
 	/* Rotation Grue de la mer vers le pont */
-	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(AZIMUT, AZIMUT_POS_MER, AZIMUT_POS_PONT, DEMARRAGE_ROTATION_MER_PONT_MS, DUREE_ROTATION_MER_PONT_MS, DEM_ARRET_POUR_CENT)
+	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(BROCHE_SIGNAL_SERVO_AZ, DEG2US(AZIMUT_POS_MER),     DEG2US(AZIMUT_POS_PONT),     DEMARRAGE_ROTATION_MER_PONT_MS,  DUREE_ROTATION_MER_PONT_MS, DEM_ARRET_POUR_CENT)
 	/* Descente du Zodiac de la position haute vers le pont */
-	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(ELEVATION, ELEVATION_POS_HAUT, ELEVATION_POS_PONT, DEMARRAGE_DESCENTE_HAUT_PONT_MS, DUREE_DESCENTE_HAUT_PONT_MS, DEM_ARRET_POUR_CENT)                                    
-	ACTION_COURTE_A_EFFECTUER(InverseLed, DEMARRAGE_DESCENTE_HAUT_PONT_MS + DUREE_DESCENTE_HAUT_PONT_MS)
+	MVT_AVEC_DEBUT_ET_FIN_MVT_LENTS(BROCHE_SIGNAL_SERVO_EL, DEG2US(ELEVATION_POS_HAUT), DEG2US(ELEVATION_POS_PONT), DEMARRAGE_DESCENTE_HAUT_PONT_MS, DUREE_DESCENTE_HAUT_PONT_MS, DEM_ARRET_POUR_CENT)                                    
+	ACTION_COURTE_A_EFFECTUER(InverseLed,      DEMARRAGE_DESCENTE_HAUT_PONT_MS + DUREE_DESCENTE_HAUT_PONT_MS)
     };
 
 #define LED		13
@@ -147,7 +150,7 @@ void setup()
   
 #if !defined(__AVR_ATtiny24__) && !defined(__AVR_ATtiny44__) && !defined(__AVR_ATtiny84__) && !defined(__AVR_ATtiny25__) && !defined(__AVR_ATtiny45__) && !defined(__AVR_ATtiny85__)
     Serial.begin(9600);
-    Serial.print("RcSeq library V");Serial.print(RcSeq_LibTextVersionRevision());Serial.print(" demo: RcSeqZodiac");
+    Serial.print(F("RcSeq library V"));Serial.print(RC_SEQ_LIB_VERSION);Serial.print(F("."));Serial.print(RC_SEQ_LIB_REVISION);Serial.println(" demo: RcSeqZodiac");
 #endif
 
 /***************************************************************************/

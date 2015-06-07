@@ -1,6 +1,8 @@
 #include <RcSeq.h>
+
 #include <TinyPinChange.h>  /* Ne pas oublier d'inclure la librairie <TinyPinChange>  qui est utilisee par la librairie <RcSeq> */
 #include <SoftRcPulseIn.h>  /* Ne pas oublier d'inclure la librairie <SoftRcPulseIn>  qui est utilisee par la librairie <RcSeq> */
+#include <RcRxPop.h>        /* Ne pas oublier d'inclure la librairie <RcRxPop>        qui est utilisee par la librairie <SoftRcPulseIn> */
 
 /*
 IMPORTANT:
@@ -17,6 +19,7 @@ http://p.loussouarn.free.fr
    Un appui furtif sur un bouton fait actionne le relais correspondant qui reste collé.
    Un deuxième appui furtif sur le même bouton fait décoller le relais correspondant.
    Version avec librairie RcSeq d'apres l'exemple de http://bateaux.trucs.free.fr/huit_sorties.html
+   Test possible en l'etat sur un arduino UNO
 ================================================================================================*/
 
 /* Declaration des voies */
@@ -39,6 +42,12 @@ const KeyMap_t ClavierMaison[] PROGMEM ={  {VALEUR_CENTRALE_US(1100,TOLERANCE)},
                                            {VALEUR_CENTRALE_US(1800,TOLERANCE)}, /* BP7: +/-40 us */
                                            {VALEUR_CENTRALE_US(1900,TOLERANCE)}, /* BP8: +/-40 us */
                                         };
+//==============================================================================================
+/* Astuce: une table pour associer un identifiant a un n° de broche (l'identifiant 0 ne sera pas utiliser ici: on commence a Idx = 1 */
+                                   /* Idx: 0,   1,   2,   3,   4,   5,   6,   7,   8 */
+const uint8_t IdxVersBroche[] PROGMEM ={   0,   1,   2,   3,   4,   5,   6,   7,   8}; /* Adapter ici les N° de broches si ils doivent etre differents de l'identifiant */
+/* Une macro pour recuperer le n° de broche correspondant a un identifiant (ameliore la lisibilite du programme) */
+#define BROCHE_POUR_IDX(Idx)    (uint8_t)pgm_read_byte(&IdxVersBroche[Idx])
 
 //==============================================================================================
 /* Astuce: une macro pour n'ecrire qu'une seule fois la fonction ActionX() */
@@ -53,7 +62,7 @@ static boolean Etat = HIGH;                              \
   if(millis() - DebutMs >= 500UL)                        \
   {                                                      \
     DebutMs = millis();                                  \
-    digitalWrite(Idx, Etat);                             \
+    digitalWrite(BROCHE_POUR_IDX(Idx), Etat);            \
     Etat = !Etat;                                        \
   }                                                      \
 }
@@ -74,14 +83,14 @@ void setup()
     RcSeq_Init();
     RcSeq_DeclareSignal(RC_VOIE, BROCHE_SIGNAL_RECEPTEUR_VOIE);
     RcSeq_DeclareClavierMaison(RC_VOIE, RC_CLAVIER_MAISON(ClavierMaison));
-    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP1, Action1);pinMode(1,OUTPUT);
-    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP2, Action2);pinMode(2,OUTPUT);
-    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP3, Action3);pinMode(3,OUTPUT);
-    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP4, Action4);pinMode(4,OUTPUT);
-    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP5, Action5);pinMode(5,OUTPUT);
-    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP6, Action6);pinMode(6,OUTPUT);
-    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP7, Action7);pinMode(7,OUTPUT);
-    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP8, Action8);pinMode(8,OUTPUT);
+    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP1, Action1); pinMode(BROCHE_POUR_IDX(1), OUTPUT);
+    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP2, Action2); pinMode(BROCHE_POUR_IDX(2), OUTPUT);
+    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP3, Action3); pinMode(BROCHE_POUR_IDX(3), OUTPUT);
+    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP4, Action4); pinMode(BROCHE_POUR_IDX(4), OUTPUT);
+    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP5, Action5); pinMode(BROCHE_POUR_IDX(5), OUTPUT);
+    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP6, Action6); pinMode(BROCHE_POUR_IDX(6), OUTPUT);
+    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP7, Action7); pinMode(BROCHE_POUR_IDX(7), OUTPUT);
+    RcSeq_DeclareCommandeEtActionCourte(RC_VOIE, BP8, Action8); pinMode(BROCHE_POUR_IDX(8), OUTPUT);
 }
 //==============================================================================================
 void loop()

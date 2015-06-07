@@ -37,6 +37,7 @@ static void ToggleLed(void); /* Declare Short Action: Toggle a LED */
 #include <DigiUSB.h> /* The Servo Sequence will be launched by sending "g" character (Go) at the USB interface */
 #include <RcSeq.h>
 #include <SoftRcPulseOut.h>
+#include <RcTxPop.h>
 
 #define LED_PIN                     1
 
@@ -104,15 +105,15 @@ Order                  <--DECK_TO_AIR_DURATION_MS--> <--DECK_TO_SEA_ROTATION_DUR
 /********************************************************************************************************************/
 /* STEP #7: Declare here the percentage of motion to be performed at half speed for servo start up and stop         */
 /********************************************************************************************************************/
-#define START_STOP_PER_CENT			5L /* Percentage of motion performed at half speed for servo start and servo stop (Soft start and Soft stop) */
+#define START_STOP_PER_CENT               5L /* Percentage of motion performed at half speed for servo start and servo stop (Soft start and Soft stop) */
 /* Note: due to the lack of programm memory on the DigiSpark, this feature is not used */
 
 /************************************************************************************************************/
 /* STEP #11: Use a "SequenceSt_t" structure table to declare the servo sequence                             */
 /* For each table entry, arguments are:                                                                     */
-/* - Servo Index                                                                                            */
-/* - Initial Servo Position in °                                                                            */
-/* - Final   Servo Position in °                                                                            */
+/* - Servo Pin                                                                                              */
+/* - Initial Servo Position in us (Macro DEG2US() can be used to convert from ° to us)                      */
+/* - Final   Servo Position in us (Macro DEG2US() can be used to convert from ° to us)                      */
 /* - Motion Start Time Stamp in ms                                                                          */
 /* - Motion duration in ms between initial and final position                                               */
 /* - Percentage of motion performed at half speed for servo start and servo stop (Soft start and Soft stop) */
@@ -120,19 +121,19 @@ Order                  <--DECK_TO_AIR_DURATION_MS--> <--DECK_TO_SEA_ROTATION_DUR
 /************************************************************************************************************/
 const SequenceSt_t ZodiacSequence[] PROGMEM = {
 	SHORT_ACTION_TO_PERFORM(ToggleLed, START_UP_DECK_TO_AIR_MS) /* Switch ON the Led at the beginning of the sequence */
-	SHORT_ACTION_TO_PERFORM(ToggleLed, START_UP_AIR_TO_DECK_FALLING_MS+AIR_TO_DECK_FALLING_DURATION_MS) /* Switch OFF the Led at the beginning of the sequence: You are not obliged to put this line at the end of the table */
+	SHORT_ACTION_TO_PERFORM(ToggleLed, START_UP_AIR_TO_DECK_FALLING_MS+AIR_TO_DECK_FALLING_DURATION_MS) /* Switch OFF the Led at the end of the sequence: You are not obliged to put this line at the end of the table */
 	/* 1) The crane lifts the pneumatic Zodiac from the deck to the air and stops */
-	MOTION_WITHOUT_SOFT_START_AND_STOP(UP_DOWN_SERVO, UP_DOWN_ON_DECK_POS, UP_DOWN_ON_AIR_POS, START_UP_DECK_TO_AIR_MS, DECK_TO_AIR_DURATION_MS)
+	MOTION_WITHOUT_SOFT_START_AND_STOP(UP_DOWN_SERVO_PIN,  DEG2US(UP_DOWN_ON_DECK_POS),     DEG2US(UP_DOWN_ON_AIR_POS),      START_UP_DECK_TO_AIR_MS,          DECK_TO_AIR_DURATION_MS)
 	/* 2) The crane rotates (90°) to locate the pneumatic Zodiac above the sea */
-	MOTION_WITHOUT_SOFT_START_AND_STOP(ROTATION_SERVO, ROTATION_ABOVE_DECK_POS, ROTATION_ABOVE_SEA_POS, START_UP_DECK_TO_SEA_ROTATION_MS, DECK_TO_SEA_ROTATION_DURATION_MS)
+	MOTION_WITHOUT_SOFT_START_AND_STOP(ROTATION_SERVO_PIN, DEG2US(ROTATION_ABOVE_DECK_POS), DEG2US(ROTATION_ABOVE_SEA_POS),  START_UP_DECK_TO_SEA_ROTATION_MS, DECK_TO_SEA_ROTATION_DURATION_MS)
 	/* 3) The crane drops down the pneumatic Zodiac at sea level */
-	MOTION_WITHOUT_SOFT_START_AND_STOP(UP_DOWN_SERVO, UP_DOWN_ON_AIR_POS, UP_DOWN_ON_SEA_POS, START_UP_AIR_TO_SEA_FALLING_MS, AIR_TO_SEA_FALLING_DURATION_MS)
+	MOTION_WITHOUT_SOFT_START_AND_STOP(UP_DOWN_SERVO_PIN,  DEG2US(UP_DOWN_ON_AIR_POS),      DEG2US(UP_DOWN_ON_SEA_POS),      START_UP_AIR_TO_SEA_FALLING_MS,   AIR_TO_SEA_FALLING_DURATION_MS)
 	/* 4) The crane stops during 6 seconds and 5) The crane lifts up the pneumatic Zodiac from sea level to the air and stops */
-	MOTION_WITHOUT_SOFT_START_AND_STOP(UP_DOWN_SERVO, UP_DOWN_ON_SEA_POS, UP_DOWN_ON_AIR_POS, START_UP_SEA_TO_AIR_RISING_MS, SEA_TO_AIR_RISING_DURATION_MS)
+	MOTION_WITHOUT_SOFT_START_AND_STOP(UP_DOWN_SERVO_PIN,  DEG2US(UP_DOWN_ON_SEA_POS),      DEG2US(UP_DOWN_ON_AIR_POS),      START_UP_SEA_TO_AIR_RISING_MS,    SEA_TO_AIR_RISING_DURATION_MS)
 	/* 6) The crane rotates (90°) to locate the pneumatic Zodiac above the deck */
-	MOTION_WITHOUT_SOFT_START_AND_STOP(ROTATION_SERVO, ROTATION_ABOVE_SEA_POS, ROTATION_ABOVE_DECK_POS, START_UP_SEA_TO_DECK_ROTATION_MS, SEA_TO_DECK_ROTATION_DURATION_MS)
+	MOTION_WITHOUT_SOFT_START_AND_STOP(ROTATION_SERVO_PIN, DEG2US(ROTATION_ABOVE_SEA_POS),  DEG2US(ROTATION_ABOVE_DECK_POS), START_UP_SEA_TO_DECK_ROTATION_MS, SEA_TO_DECK_ROTATION_DURATION_MS)
 	/* 7) The crane drops down the pneumatic Zodiac on the deck and stops. The sequence ends. */
-	MOTION_WITHOUT_SOFT_START_AND_STOP(UP_DOWN_SERVO, UP_DOWN_ON_AIR_POS, UP_DOWN_ON_DECK_POS, START_UP_AIR_TO_DECK_FALLING_MS, AIR_TO_DECK_FALLING_DURATION_MS)                                    
+	MOTION_WITHOUT_SOFT_START_AND_STOP(UP_DOWN_SERVO_PIN,  DEG2US(UP_DOWN_ON_AIR_POS),      DEG2US(UP_DOWN_ON_DECK_POS),     START_UP_AIR_TO_DECK_FALLING_MS,  AIR_TO_DECK_FALLING_DURATION_MS)                                    
     };
 
 void setup()
