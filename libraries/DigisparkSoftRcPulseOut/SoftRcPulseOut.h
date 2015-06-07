@@ -32,6 +32,11 @@
 
 #include <inttypes.h>
 
+#define SOFT_RC_PULSE_OUT_VERSION          2
+#define SOFT_RC_PULSE_OUT_REVISION         0
+
+#define SOFT_RC_PULSE_OUT_INSTANCE_MAX_NB  15 /* Counter on 4 bits */
+
 class SoftRcPulseOut : public RcTxPop
 {
   private:
@@ -76,7 +81,12 @@ class SoftRcPulseOut : public RcTxPop
 #define lit_us                                        read_us
 #define estAttache                                    attached
 #define definitImpulsionMinimum                       setMinimumPulse
-#define definitImpulsionMaximum	                       setMaximumPulse
+#define definitImpulsionMaximum	                      setMaximumPulse
 #define rafraichit                                    refresh
+#define creerInstance                                 createInstance
+#define nbInstanceCrees                               createdInstanceNb
+#define detruireInstance                              destroyInstance
+#define softRcPulseOutParId                           softRcPulseOutById
+#define idPourBroche                                  getIdByPin
 
 #endif

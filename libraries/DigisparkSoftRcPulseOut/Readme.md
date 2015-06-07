@@ -47,10 +47,9 @@ API/methods:
 	* **getIdByPin()**: returns the Id of the instance attached to a pin
 	* **destroyInstance()**: destroys a dynamically created instance (instance statically created cannot be destroyed)
 
-* Methods for version management:
-	* **LibVersion()**: returns the library version
-	* **LibRevision**: returns the library revision
-	* **LibTextVersionRevision()**: returns the library version/revision string (eg: "1.0")
+* Constants for version management:
+	* **SOFT_RC_PULSE_OUT_VERSION**: returns the library version
+	* **SOFT_RC_PULSE_OUT_REVISION**: returns the library revision
 
 * Synchronization:
 	* By giving **_1_** or **_true_** as optional argument for the **SoftRcPulseOut::refresh()** method, the pulses are refreshed immediately (without waiting for the usual 20ms).

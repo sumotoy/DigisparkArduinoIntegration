@@ -41,14 +41,13 @@ SoftRcPulseOut *SoftRcPulseOut::first;
 typedef struct{
   uint8_t
     Total:       4,
-    Dynamically: 4;  
+    Dynamically: 4;
 }ObjectCreatedSt_t;
 
 static ObjectCreatedSt_t ObjectCreated = {0, 0};
 
 #define NO_ANGLE                           (0xff)
 #define NOT_ATTACHED                       (0xff)
-#define SOFT_RC_PULSE_OUT_INSTANCE_MAX_NB  15 /* Counter on 4 bits */
 
 SoftRcPulseOut::SoftRcPulseOut()
 {
