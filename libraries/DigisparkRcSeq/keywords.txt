@@ -10,9 +10,6 @@ RcSeq	KEYWORD1
 ############################################
 # Methods and Functions (KEYWORD2)
 ############################################
-RcSeq_LibVersion	KEYWORD2
-RcSeq_LibRevision	KEYWORD2
-RcSeq_LibTextVersionRevision	KEYWORD2
 RcSeq_Init	KEYWORD2
 RcSeq_DeclareSignal	KEYWORD2
 RcSeq_SignalTimeout	KEYWORD2

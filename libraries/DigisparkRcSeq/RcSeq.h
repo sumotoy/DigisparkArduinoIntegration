@@ -44,6 +44,10 @@
  ATTENTION: l'utilisateur final doit egalement utiliser la methode de programmation asynchrone dans la fonction loop() (pas de fonctions bloquantes comme delay() ou pulseIn()).
  http://p.loussouarn.free.fr
 */
+/* For an easy Library Version Management */
+#define RC_SEQ_LIB_VERSION		2
+#define RC_SEQ_LIB_REVISION		2
+
 /**********************************************/
 /*         RCSEQ LIBRARY CONFIGURATION        */
 /**********************************************/
@@ -52,13 +56,12 @@
 #define RC_SEQ_WITH_SHORT_ACTION_SUPPORT      /* Uncomment this to allows to put call to short action in sequence table */
 #define RC_SEQ_CONTROL_SUPPORT                /* Uncomment this to allow control on sequences: start condition and end of sequence */
 
+#define RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT   /* Comment this line to allow sequences and servos dynamic allocation (number not known by advance) */
 
 
 /**********************************************/
 /*      /!\   Do not touch below   /!\        */
 /**********************************************/
-
-#define RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT   /* Do NOT comment this line for now: still buggy (to do: fix this) */
 
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 #include <TinyPinChange.h>
@@ -75,11 +78,7 @@
 #warning RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT disabled: no Servo/ESC command possible!!!
 #endif
 
-#if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -107,11 +106,11 @@
 #endif
 
 typedef struct {
-  uint8_t      ServoIndex;
-  uint8_t      StartInDegrees;
-  uint8_t      EndInDegrees;
+  uint8_t      ServoPin;
+  uint16_t     StartInUs;
+  uint16_t     EndInUs;
   uint32_t     StartMotionOffsetMs;
-  uint32_t     MotionDurationMs;
+  uint16_t     MotionDurationMs;
   void         (*ShortAction)(void);
 }SequenceSt_t;
 
@@ -123,14 +122,14 @@ typedef struct {
 #define TABLE_ITEM_NBR(Tbl)  (sizeof(Tbl)/sizeof(Tbl[0]))
 
 /* Macro to declare a motion WITH soft start and soft stop (to use in "Sequence[]" structure table) */
-#define MOTION_WITH_SOFT_START_AND_STOP(ServoIndex,StartInDegrees,EndInDegrees,StartMvtOffsetMs,MvtDurationMs,PourCent)                                                                                                                                                                              \
-  {(ServoIndex), (StartInDegrees),                                                (StartInDegrees+((EndInDegrees-StartInDegrees)*PourCent)/100L), (StartMvtOffsetMs),                                                                            ((MvtDurationMs*2L*PourCent)/100L),        NULL  }, \
-  {(ServoIndex), (StartInDegrees+((EndInDegrees-StartInDegrees)*PourCent)/100L), (EndInDegrees-((EndInDegrees-StartInDegrees)*PourCent)/100L),    (StartMvtOffsetMs+(MvtDurationMs*2L*PourCent)/100L),                                           ((MvtDurationMs*(100L-4L*PourCent))/100L), NULL  }, \
-  {(ServoIndex), (EndInDegrees-((EndInDegrees-StartInDegrees)*PourCent)/100L),   (EndInDegrees),                                                  ((StartMvtOffsetMs+(MvtDurationMs*2L*PourCent)/100L)+(MvtDurationMs*(100L-4L*PourCent))/100L), ((MvtDurationMs*2L*PourCent)/100L),        NULL  },
+#define MOTION_WITH_SOFT_START_AND_STOP(ServoIndex, StartInUs, EndInUs, StartMvtOffsetMs, MvtDurationMs, PourCent)                                                                                                                                                                                  \
+  {(ServoIndex), (StartInUs),                                             ((StartInUs)+(((EndInUs)-(StartInUs))*(PourCent))/100L), (StartMvtOffsetMs),                                                                                      (((MvtDurationMs)*2L*(PourCent))/100L),        NULL  }, \
+  {(ServoIndex), ((StartInUs)+(((EndInUs)-(StartInUs))*(PourCent))/100L), ((EndInUs)-(((EndInUs)-(StartInUs))*PourCent)/100L),     ((StartMvtOffsetMs)+((MvtDurationMs)*2L*(PourCent))/100L),                                               (((MvtDurationMs)*(100L-4L*(PourCent)))/100L), NULL  }, \
+  {(ServoIndex), ((EndInUs)-(((EndInUs)-(StartInUs))*(PourCent))/100L),   (EndInUs),                                               (((StartMvtOffsetMs)+((MvtDurationMs)*2L*(PourCent))/100L)+((MvtDurationMs)*(100L-4L*(PourCent)))/100L), (((MvtDurationMs)*2L*(PourCent))/100L),        NULL  },
 
 /* Macro to declare a motion WITHOUT soft start and soft stop (to use in "Sequence[]" structure table) */
-#define MOTION_WITHOUT_SOFT_START_AND_STOP(ServoIndex,StartInDegrees,EndInDegrees,StartMvtOffsetMs,MvtDurationMs)      \
-  {ServoIndex, StartInDegrees, EndInDegrees, StartMvtOffsetMs, MvtDurationMs, NULL},
+#define MOTION_WITHOUT_SOFT_START_AND_STOP(ServoIndex, StartInUs, EndInUs, StartMvtOffsetMs, MvtDurationMs)      \
+  {ServoIndex, StartInUs, EndInUs, StartMvtOffsetMs, MvtDurationMs, NULL},
 
 /* Macro to declare a short action (to be used in "Sequence[]" structure table) */
 #define SHORT_ACTION_TO_PERFORM(ShortAction, StartActionOffsetMs) {255, 0, 0, (StartActionOffsetMs), 0L, (ShortAction)},
@@ -140,12 +139,11 @@ enum {RC_CMD_STICK=0, RC_CMD_MULTI_POS_SW, RC_CMD_CUSTOM};
 #define RC_SEQUENCE(Sequence)			Sequence, TABLE_ITEM_NBR(Sequence)
 #define RC_CUSTOM_KEYBOARD(KeyMap)		KeyMap, TABLE_ITEM_NBR(KeyMap)
 
+#define DEG2US(Deg)                            (600 + ((Deg) * 10)) /* 600us for 0°, 1500us for 90°, 2400us for 180° */
+
 #define CENTER_VALUE_US(CenterVal,Tol)		((CenterVal)-(Tol)),((CenterVal)+(Tol))
 
 void    RcSeq_Init(void);
-uint8_t RcSeq_LibVersion(void);
-uint8_t RcSeq_LibRevision(void);
-char   *RcSeq_LibTextVersionRevision(void);
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 void    RcSeq_DeclareServo(uint8_t Idx, uint8_t DigitalPin);
 void    RcSeq_ServoWrite(uint8_t Idx, uint16_t Angle);
@@ -163,11 +161,10 @@ void    RcSeq_DeclareCommandAndShortAction(uint8_t CmdIdx, uint8_t TypeCmd, void
 #endif
 #endif
 #ifdef RC_SEQ_CONTROL_SUPPORT
-void    RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx, uint8_t TypeCmd, const SequenceSt_t *Table, uint8_t SequenceLength, uint8_t(*Control)(uint8_t Action, uint8_t CmdSeqIdx));
+void    RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx,uint8_t Pos, const SequenceSt_t *Table, uint8_t SequenceLength, uint8_t(*Control)(uint8_t Action, uint8_t CmdSeqIdx));
 enum {RC_SEQ_START_CONDITION, RC_SEQ_END_OF_SEQ};
-#else
-void    RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx, uint8_t TypeCmd, const SequenceSt_t *Table, uint8_t SequenceLength);
 #endif
+void    RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx,uint8_t Pos, const SequenceSt_t *Table, uint8_t SequenceLength);
 uint8_t RcSeq_LaunchSequence(const SequenceSt_t *Table);
 #ifdef RC_SEQ_WITH_SHORT_ACTION_SUPPORT
 #define RcSeq_LaunchShortAction(ShortAction)			if(ShortAction) ShortAction()

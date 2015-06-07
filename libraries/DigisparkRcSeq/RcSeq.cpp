@@ -76,14 +76,6 @@
 /*************************************************************************
 								MACROS
 *************************************************************************/
-/* For an easy Library Version Management */
-#define RC_SEQ_LIB_VERSION		2
-#define RC_SEQ_LIB_REVISION		1
-
-#define STR(s)				#s
-#define MAKE_TEXT_VER_REV(Ver,Rev)	(char*)(STR(Ver)"."STR(Rev))
-
-#define LIB_TEXT_VERSION_REVISION	MAKE_TEXT_VER_REV(RC_SEQ_LIB_VERSION,RC_SEQ_LIB_REVISION) /* Make Full version as a string "Ver.Rev" */
 
 /* A Set of Macros for bit manipulation */
 #define SET_BIT(Value,BitIdx)		(Value)|= (1<<(BitIdx))
@@ -106,8 +98,8 @@
 /* The macro below computes how many refresh to perform while a duration in ms */
 #define REFRESH_NB(DurationMs)         ((DurationMs)/REFRESH_INTERVAL_MS)
 
-/* The motion goes from StartInDegrees to EndInDegrees and will take MotionDurationMs in ms */
-#define STEP_IN_DEGREES_PER_REFRESH(StartInDegrees,EndInDegrees,MotionDurationMs) (EndInDegrees-StartInDegrees)/REFRESH_NB(MotionDurationMs)
+/* The motion goes from StartInUs to EndInUs and will take MotionDurationMs in ms */
+#define STEP_IN_US_PER_REFRESH(StartInUs, EndInUs, MotionDurationMs)  (EndInUs - StartInUs) / REFRESH_NB(MotionDurationMs)
 /* A set of Macros to read an (u)int8_t (Byte), an (u)int16_t (Word) in  program memory (Flash memory) */
 #define PGM_READ_8(FlashAddr)		pgm_read_byte(&(FlashAddr))
 #define PGM_READ_16(FlashAddr)		pgm_read_word(&(FlashAddr))
@@ -133,6 +125,12 @@ Pos 0     1     2     3     4
 #define STEP(MinUs, MaxUs, KeyNb, Type) ((MaxUs-MinUs)/TOTAL_STEP_NBR(KeyNb,Type))
 #define KEY_MIN_VAL(Idx, Step)          ((ACTIVE_AREA_STEP_NBR+INACTIVE_AREA_STEP_NBR)*(Step)*(Idx))
 #define KEY_MAX_VAL(Idx, Step)          (KEY_MIN_VAL(Idx,Step)+(ACTIVE_AREA_STEP_NBR*(Step)))
+
+#ifdef RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT
+#define ALLOC_DEPENDENT_SERVO_MAX_NB    SERVO_MAX_NB
+#else
+#define ALLOC_DEPENDENT_SERVO_MAX_NB    SOFT_RC_PULSE_OUT_INSTANCE_MAX_NB
+#endif
 
 typedef struct {
   int8_t   InProgress;
@@ -167,10 +165,9 @@ typedef struct {
 
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 typedef struct {
-  SoftRcPulseOut Motor;
   uint16_t       RefreshNb;       /* Used to store the number of refresh to perform during a servo motion (if not 0 -> Motion in progress) */
   uint8_t        SeqLineInProgress;
-}ServoSt_t;
+}ServoAttribSt_t;
 #endif
 /*************************************************************************
 							GLOBAL VARIABLES
@@ -181,15 +178,16 @@ static uint8_t ServoNb;
 static uint8_t CmdSignalNb;
 static RcCmdSt_t          RcChannel[RC_CMD_MAX_NB];
 #endif
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
+ServoAttribSt_t           ServoAttrib[ALLOC_DEPENDENT_SERVO_MAX_NB];
+static SoftRcPulseOut     *Servo = NULL;
+#endif
 #ifdef RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT
-#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
-static ServoSt_t          Servo[SERVO_MAX_NB];
-#endif
 static CmdSequenceSt_t    CmdSequence[SEQUENCE_MAX_NB];
-#else
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
-static ServoSt_t          *Servo = NULL;
+static SoftRcPulseOut     ServoTbl[ALLOC_DEPENDENT_SERVO_MAX_NB];
 #endif
+#else
 static CmdSequenceSt_t    *CmdSequence = NULL;
 #endif
 /*************************************************************************
@@ -225,48 +223,37 @@ void RcSeq_Init(void)
 #endif
 }
 //========================================================================================================================
-uint8_t RcSeq_LibVersion(void)
-{
-	return(RC_SEQ_LIB_VERSION);
-}
-//========================================================================================================================
-uint8_t RcSeq_LibRevision(void)
-{
-	return(RC_SEQ_LIB_REVISION);
-}
-//========================================================================================================================
-char *RcSeq_LibTextVersionRevision(void)
-{
-	return(LIB_TEXT_VERSION_REVISION);
-}
-//========================================================================================================================
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 void RcSeq_DeclareServo(uint8_t Idx, uint8_t DigitalPin)
 {
+	if(Idx < ALLOC_DEPENDENT_SERVO_MAX_NB)
+	{
 #ifdef RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT
-	if(Idx < SERVO_MAX_NB)
-	{
-		Servo[Idx].Motor.attach(DigitalPin);
-		Servo[Idx].SeqLineInProgress = NO_SEQ_LINE;
+		ServoTbl[Idx].attach(DigitalPin);
+		ServoAttrib[Idx].SeqLineInProgress = NO_SEQ_LINE;
 		if(ServoNb < (Idx + 1)) ServoNb = (Idx + 1);
-	}
 #else
-	if(Idx < SERVO_MAX_NB)
-	{
+	  int8_t NewId;
+		NewId = SoftRcPulseOut::createInstance();
+//		Serial.print(F("NewId="));Serial.println(NewId);
+		Servo = SoftRcPulseOut::softRcPulseOutById(NewId);
+		Servo->attach(DigitalPin);
+		ServoAttrib[Idx].SeqLineInProgress = NO_SEQ_LINE;
 		ServoNb++;
-		if(!Servo) Servo = (ServoSt_t*)malloc(sizeof(ServoSt_t));
-		else       Servo = (ServoSt_t*)realloc(Servo, sizeof(ServoSt_t) * ServoNb);
-		Servo[Idx].Motor.attach(DigitalPin);
-		Servo[Idx].SeqLineInProgress = NO_SEQ_LINE;
-	}
 #endif
+	}
 }
 //========================================================================================================================
 void RcSeq_ServoWrite(uint8_t Idx, uint16_t Angle)
 {
-	if(Idx < SERVO_MAX_NB)
+	if(Idx < ALLOC_DEPENDENT_SERVO_MAX_NB)
 	{
-	  Servo[Idx].Motor.write(Angle);
+#ifdef RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT
+	  Servo = (SoftRcPulseOut *)&ServoTbl[Idx];
+#else
+	  Servo = SoftRcPulseOut::softRcPulseOutById(Idx);
+#endif
+	  Servo->write(Angle);
 	}
 }
 #endif
@@ -312,9 +299,10 @@ void RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx,uint8_t Pos, const SequenceS
 void RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx,uint8_t Pos, const SequenceSt_t *Table, uint8_t SequenceLength)
 #endif
 {
-uint8_t  Idx, ServoIdx;
-uint16_t StartInDegrees;
-uint32_t StartMinMs[SERVO_MAX_NB];
+uint8_t  Idx, ServoPin;
+int8_t   ServoIdx;
+uint16_t StartInUs;
+uint32_t StartMinMs[ALLOC_DEPENDENT_SERVO_MAX_NB];
 #ifndef RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT
 	if(!CmdSequence) CmdSequence = (CmdSequenceSt_t*)malloc(sizeof(CmdSequenceSt_t));
 	else             CmdSequence = (CmdSequenceSt_t*)realloc(CmdSequence, sizeof(CmdSequenceSt_t) * (SeqNb + 1));
@@ -342,25 +330,37 @@ uint32_t StartMinMs[SERVO_MAX_NB];
 	
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
 	/* Get initial pulse width for each Servo */
-	for(Idx = 0; Idx < SERVO_MAX_NB; Idx++)
+	for(Idx = 0; Idx < ALLOC_DEPENDENT_SERVO_MAX_NB; Idx++)
 	{
 		StartMinMs[Idx] = 0xFFFFFFFF;
 	}
 	for(Idx = 0; Idx < SequenceLength; Idx++)
 	{
-		ServoIdx = (int8_t)PGM_READ_8(Table[Idx].ServoIndex);
-		if(ServoIdx != 255)
+		ServoPin = (int8_t)PGM_READ_8(Table[Idx].ServoPin);
+		ServoIdx = SoftRcPulseOut::getIdByPin(ServoPin);
+		if(ServoPin != 255)
 		{
 			if((uint32_t)PGM_READ_32(Table[Idx].StartMotionOffsetMs) <= StartMinMs[ServoIdx])
 			{
 				StartMinMs[ServoIdx] = (uint32_t)PGM_READ_32(Table[Idx].StartMotionOffsetMs);
-				StartInDegrees = (uint16_t)PGM_READ_8(Table[Idx].StartInDegrees);
-				Servo[ServoIdx].Motor.write(StartInDegrees);
+				StartInUs = (uint16_t)PGM_READ_16(Table[Idx].StartInUs);
+#ifdef RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT
+				Servo = (SoftRcPulseOut *)&ServoTbl[ServoIdx];
+#else
+				Servo = SoftRcPulseOut::softRcPulseOutById(ServoIdx);
+#endif
+				Servo->write_us(StartInUs);
 			}
 		}
 	}
 #endif
 }
+#ifdef RC_SEQ_CONTROL_SUPPORT
+void RcSeq_DeclareCommandAndSequence(uint8_t CmdIdx,uint8_t Pos, const SequenceSt_t *Table, uint8_t SequenceLength)
+{
+  RcSeq_DeclareCommandAndSequence(CmdIdx, Pos, Table, SequenceLength, NULL);
+}
+#endif
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 //========================================================================================================================
 void RcSeq_DeclareCommandAndShortAction(uint8_t CmdIdx, uint8_t Pos, void(*ShortAction)(void))
@@ -412,9 +412,9 @@ static uint32_t StartChronoInterPulseMs = millis();
 SequenceSt_t   *SequenceTable;
 void           (*ShortAction)(void);
 int8_t          ShortActionCnt;
-uint8_t         ServoIdx;
-uint32_t        MotionDurationMs, StartOfSeqMs, EndOfSeqMs, Pos;
-uint16_t        StartInDegrees, EndInDegrees;
+uint8_t         ServoPin, ServoIdx;
+uint32_t        MotionDurationMs, StartOfSeqMs, EndOfSeqMs, PosUs;
+uint16_t        StartInUs, EndInUs;
 
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_IN_SUPPORT
 uint8_t         ChIdx;
@@ -462,9 +462,12 @@ uint32_t        RcPulseWidthUs;
 			for(int8_t SeqLine = 0; SeqLine < CmdSequence[Idx].SequenceLength; SeqLine++) /* Read all lines of the sequence table: this allows to run several servos simultaneously (not forcibly one after the other) */
 			{
 				SequenceTable = (SequenceSt_t *)CmdSequence[Idx].TableOrShortAction;
-				ServoIdx = (int8_t)PGM_READ_8(SequenceTable[SeqLine].ServoIndex);
+				ServoPin = (int8_t)PGM_READ_8(SequenceTable[SeqLine].ServoPin);
+#ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
+				ServoIdx = SoftRcPulseOut::getIdByPin(ServoPin);
+#endif
 #ifdef RC_SEQ_WITH_SHORT_ACTION_SUPPORT
-				if(ServoIdx == 255) /* Not a Servo: it's a short Action to perform only if not already done */
+				if(ServoPin == 255) /* Not a Servo: it's a short Action to perform only if not already done */
 				{
 					ShortActionCnt++;
 					StartOfSeqMs = CmdSequence[Idx].StartChronoMs + (int32_t)PGM_READ_32(SequenceTable[SeqLine].StartMotionOffsetMs);
@@ -484,34 +487,39 @@ uint32_t        RcPulseWidthUs;
 				}
 #endif
 #ifdef RC_SEQ_WITH_SOFT_RC_PULSE_OUT_SUPPORT
-				if(Servo[ServoIdx].RefreshNb && SeqLine != Servo[ServoIdx].SeqLineInProgress)
+				if(ServoAttrib[ServoIdx].RefreshNb && SeqLine != ServoAttrib[ServoIdx].SeqLineInProgress)
 				{
 					continue;
 				}
 				StartOfSeqMs = CmdSequence[Idx].StartChronoMs + (int32_t)PGM_READ_32(SequenceTable[SeqLine].StartMotionOffsetMs);
-				MotionDurationMs = (int32_t)PGM_READ_32(SequenceTable[SeqLine].MotionDurationMs);
+				MotionDurationMs = (int32_t)PGM_READ_16(SequenceTable[SeqLine].MotionDurationMs);
 				EndOfSeqMs = StartOfSeqMs + MotionDurationMs;
-				if(!Servo[ServoIdx].RefreshNb && Servo[ServoIdx].SeqLineInProgress == NO_SEQ_LINE)
+#ifdef RC_SEQ_WITH_STATIC_MEM_ALLOC_SUPPORT
+				Servo = (SoftRcPulseOut *)&ServoTbl[ServoIdx];
+#else
+				Servo = SoftRcPulseOut::softRcPulseOutById(ServoIdx);
+#endif
+				if(!ServoAttrib[ServoIdx].RefreshNb && ServoAttrib[ServoIdx].SeqLineInProgress == NO_SEQ_LINE)
 				{
 					if( (NowMs >= StartOfSeqMs) && (NowMs <= EndOfSeqMs) )
 					{
-						Servo[ServoIdx].SeqLineInProgress = SeqLine;
-						StartInDegrees = (uint16_t)PGM_READ_8(SequenceTable[SeqLine].StartInDegrees);
-						Servo[ServoIdx].RefreshNb = REFRESH_NB(MotionDurationMs);
-						Servo[ServoIdx].Motor.write(StartInDegrees);
+						ServoAttrib[ServoIdx].SeqLineInProgress = SeqLine;
+						StartInUs = (uint16_t)PGM_READ_16(SequenceTable[SeqLine].StartInUs);
+						ServoAttrib[ServoIdx].RefreshNb = REFRESH_NB(MotionDurationMs);
+						Servo->write_us(StartInUs);
 					}
 				}
 				else
 				{
 					/* A sequence line is in progress: update the next position */
-					if(Servo[ServoIdx].RefreshNb) Servo[ServoIdx].RefreshNb--;
-					StartInDegrees = (uint16_t)PGM_READ_8(SequenceTable[SeqLine].StartInDegrees);
-					EndInDegrees = (uint16_t)PGM_READ_8(SequenceTable[SeqLine].EndInDegrees);
-					Pos = (int32_t)EndInDegrees - ((int32_t)Servo[ServoIdx].RefreshNb * STEP_IN_DEGREES_PER_REFRESH((int32_t)StartInDegrees,(int32_t)EndInDegrees,(int32_t)MotionDurationMs)); //For refresh max nb, Pos = StartInDegrees
-					Servo[ServoIdx].Motor.write(Pos);
-					if( !Servo[ServoIdx].RefreshNb )
+					if(ServoAttrib[ServoIdx].RefreshNb) ServoAttrib[ServoIdx].RefreshNb--;
+					StartInUs = (uint16_t)PGM_READ_16(SequenceTable[SeqLine].StartInUs);
+					EndInUs = (uint16_t)PGM_READ_16(SequenceTable[SeqLine].EndInUs);
+					PosUs = /*(uint16_t)*/((int32_t)EndInUs - ((int32_t)ServoAttrib[ServoIdx].RefreshNb * STEP_IN_US_PER_REFRESH((int32_t)StartInUs, (int32_t)EndInUs, (int32_t)MotionDurationMs))); //For refresh max nb, Pos = StartInUs
+					Servo->write_us(PosUs);
+					if( !ServoAttrib[ServoIdx].RefreshNb )
 					{
-						Servo[ServoIdx].SeqLineInProgress = NO_SEQ_LINE;
+						ServoAttrib[ServoIdx].SeqLineInProgress = NO_SEQ_LINE;
 						/* Last servo motion and refresh = 0  ->  End of Sequence */
 						if(SeqLine == (CmdSequence[Idx].SequenceLength - 1))
 						{
