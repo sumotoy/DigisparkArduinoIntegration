@@ -8,6 +8,7 @@ This example code is in the public domain.
 */
 #include <TinyPinChange.h>
 #include <TinyPpmReader.h>
+#include <RcRxPop.h>
 
 #define PPM_INPUT_PIN  2
 
