@@ -2,7 +2,7 @@
 /* PROJECT:   All based on ATtinyX5, ATtinyX4, Atiny167, ATmega328P, ATmega2560,*/
 /*            ATmega32U4.                                                       */
 /* MODULE:    TinyPinChange                                                     */
-/* VERSION:   1.4 (15/05/2015)                                                  */
+/* VERSION:   1.5 (31/10/2015)                                                  */
 /* DATE:      30/01/2011                                                        */
 /* TARGET:    ATtinyX5, ATtinyX4, ATtiny167, ATmega328P, ATmega2560             */
 /* COMPILER:  WinAvr, avr-gcc, avr-g++                                          */
@@ -26,24 +26,22 @@
 /*************************************************************************
 							GLOBAL VARIABLES
 *************************************************************************/
-struct PinChangeStruct
-{
+typedef struct{
+
 	void			(*Isr[PIN_CHANGE_HANDLER_MAX_NB])(void);
 	uint8_t			LoadedIsrNb;
 	uint8_t			Event;
 	uint8_t			PinPrev;
 	uint8_t			PinCur;
-};
+}PinChangeSt_t;
 
-struct PinChangePortStruct
-{
-	PinChangeStruct Port[PIN_CHG_PORT_NB];
-};
+typedef struct{
+	PinChangeSt_t Port[PIN_CHG_PORT_NB];
+}PinChangePortSt_t;
 
-static volatile struct PinChangePortStruct	PinChange;
+static volatile PinChangePortSt_t PinChange;
 
 #if defined(__AVR_ATmega32U4__)
-#define PinToExtInt(p)		(((p) >= 2 ) ? (3 - (p)) : ((p) + 2))
 static void ExtInt0AsEmulatedPinChangeInt(void);
 static void ExtInt1AsEmulatedPinChangeInt(void);
 static void ExtInt2AsEmulatedPinChangeInt(void);
@@ -127,7 +125,7 @@ int8_t IsrIdx, PortIdx, AlreadyLoaded = 0;
 	if(Pin >= 0 && Pin <= 3)
 	{
 	  /* INT0, INT1, INT2, INT3 used as emulated Pin Change Interrupt */
-	  switch(PinToExtInt(Pin))
+	  switch(digitalPinToInterrupt(Pin))
 	  {
 	    case 0: /* Ext INT0 */
 	    PinChange.Port[PortIdx].Isr[0] = Isr;
@@ -190,7 +188,7 @@ void TinyPinChange_EnablePin(uint8_t Pin)
 #if defined(__AVR_ATmega32U4__)
     if(Pin <= 3)
     {
-      EIMSK |= (1 << PinToExtInt(Pin));      
+      EIMSK |= (1 << digitalPinToInterrupt(Pin));
     }
     else
     {
@@ -221,7 +219,7 @@ void TinyPinChange_DisablePin(uint8_t Pin)
 #if defined(__AVR_ATmega32U4__)
     if(Pin <= 3)
     {
-      EIMSK &= ~(1 << PinToExtInt(Pin));      
+      EIMSK &= ~(1 << digitalPinToInterrupt(Pin));      
     }
     else
     {
@@ -269,7 +267,7 @@ uint8_t TinyPinChange_GetCurPortSt(uint8_t VirtualPortIdx)
 #define DECLARE_EXT_INT_AS_PIN_CHANGE_INT(ExtIntIdx)                                \
 static void ExtInt##ExtIntIdx##AsEmulatedPinChangeInt(void)                         \
 {                                                                                   \
-  PinChange.Port[1].PinCur  = (PC_PIN1) & (1 << (ExtIntIdx));                       \
+  PinChange.Port[1].PinCur  = (PC_PIN1) & (PC_PCMSK1);                              \
   PinChange.Port[1].Event   = PinChange.Port[1].PinPrev ^ PinChange.Port[1].PinCur; \
   PinChange.Port[1].PinPrev = PinChange.Port[1].PinCur;                             \
   PinChange.Port[1].Isr[(ExtIntIdx)]();                                             \
