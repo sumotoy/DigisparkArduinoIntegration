@@ -47,8 +47,8 @@ On the arduino MEGA (ATmega2560), as all the pins do not support "pin change int
 On the arduino Lenardo, Micro and Pro Micro (ATmega32U4), as all the pins do not support "pin change interrupt", only the following pins are supported:
 
 * 0  -> 3  (external INT0, INT1, INT2 and INT3 are used as emulated Pin Change Interrupt)
-* 8  -> 11 (pin 11 is not available on the connector)
-* 14 -> 17 (pin 17 is not available on the connector)
+* 8  -> 11 (pin 11 is not available on the headers/connectors)
+* 14 -> 17 (pin 17 is not available on the headers/connectors)
 
 On other devices (ATmega328, ATtiny84, ATtiny85 and ATtiny167), all the pins are usable.
 
