@@ -17,6 +17,8 @@ Supported Arduinos:
 * **ATtiny167 (Standalone or Digispark pro)**
 * **ATtiny85 (Standalone or Digispark)**
 * **ATmega368P (UNO)**
+* **ATmega2560 (MEGA)**
+* **ATmega32U4 (Leonardo, Micro, Pro Micro)**
 
 Tip and Tricks:
 --------------
