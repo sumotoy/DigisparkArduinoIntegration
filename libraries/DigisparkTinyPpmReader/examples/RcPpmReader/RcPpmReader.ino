@@ -23,10 +23,11 @@ void setup()
 void loop()
 {
   MyPpmReader.suspend(); /* Not needed if an hardware serial is used to display results */
+  Serial.print(F("* Period="));Serial.print((int)MyPpmReader.ppmPeriod_us());Serial.println(F(" us *"));
   Serial.print(F("ChNb="));Serial.println((int)MyPpmReader.detectedChannelNb());
   for(uint8_t Idx = 1; Idx <= MyPpmReader.detectedChannelNb(); Idx++) /* From Channel 1 to Max detected */
   {
-    Serial.println(MyPpmReader.width_us(Idx));
+    Serial.print(F("Ch"));Serial.print(Idx);Serial.print(F("="));Serial.print(MyPpmReader.width_us(Idx));Serial.println(F(" us"));
   }
   MyPpmReader.resume(); /* Not needed if an hardware serial is used to display results */
   delay(500);
