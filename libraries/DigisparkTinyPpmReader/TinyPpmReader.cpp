@@ -8,6 +8,7 @@
    http://p.loussouarn.free.fr
    01/02/2015: Creation
    06/04/2015: RcTxPop support added (allows to create a virtual serial port over a PPM channel)
+   09/11/2015: No need to create the TinyPpmReader object anymore, unused _PinMask variable removed
 */
 #include <TinyPpmReader.h>
 
@@ -46,19 +47,19 @@ EXAMPLE OF POSITIVE AND NEGATIVE PPM FRAME TRANSPORTING 2 RC CHANNELS
 #define NEUTRAL_US           1500
 #define SYNCHRO_TIME_MIN_US  3000
 
-TinyPpmReader *TinyPpmReader::first;
+TinyPpmReaderClass TinyPpmReader = TinyPpmReaderClass();
 
 /* Public functions */
-TinyPpmReader::TinyPpmReader(void) /* Constructor */
+TinyPpmReaderClass::TinyPpmReaderClass(void) /* Constructor */
 {
 }
 
-uint8_t TinyPpmReader::attach(uint8_t PpmInputPin)
+uint8_t TinyPpmReaderClass::attach(uint8_t PpmInputPin)
 {
   uint8_t Ret = 0;
   
   TinyPinChange_Init();
-  _VirtualPort = TinyPinChange_RegisterIsr(PpmInputPin, TinyPpmReader::rcChannelCollectorIsr);
+  _VirtualPort = TinyPinChange_RegisterIsr(PpmInputPin, TinyPpmReaderClass::rcChannelCollectorIsr);
   if(_VirtualPort >= 0)
   {
     for(uint8_t Idx = 0; Idx < TINY_PPM_READER_CH_MAX; Idx++)
@@ -68,31 +69,22 @@ uint8_t TinyPpmReader::attach(uint8_t PpmInputPin)
     _ChIdx    = (TINY_PPM_READER_CH_MAX + 1);
     _ChIdxMax = 0;
     _Synchro  = 0;
-    next = first;
-    first = this;
     _PpmFrameInputPin = PpmInputPin;
-    _PinMask = TinyPinChange_PinToMsk(_PpmFrameInputPin);
     TinyPinChange_EnablePin(_PpmFrameInputPin);
     Ret = 1;
   }
   return(Ret);
 }
 
-uint8_t TinyPpmReader::detectedChannelNb(void)
-{
-  uint8_t ChannelNb;
-  
-  cli();
-  ChannelNb = _ChIdxMax;
-  sei();
-  if(ChannelNb > TINY_PPM_READER_CH_MAX) ChannelNb = 0;
-  return(ChannelNb);
+uint8_t TinyPpmReaderClass::detectedChannelNb(void)
+{ 
+  return(_ChIdxMax); /* No need to mask/unmask interrupt (8 bits) */
 }
 
-uint16_t TinyPpmReader::width_us(uint8_t Ch)
+uint16_t TinyPpmReaderClass::width_us(uint8_t Ch)
 {
-  uint16_t Width_us = 0;
-  if(Ch >= 1 && Ch <= TinyPpmReader::detectedChannelNb())
+  uint16_t Width_us = 1500;
+  if((Ch >= 1) && (Ch <= TinyPpmReaderClass::detectedChannelNb()))
   {
     Ch--;
 #if 1
@@ -110,7 +102,7 @@ uint16_t TinyPpmReader::width_us(uint8_t Ch)
   return(Width_us);
 }
 
-uint16_t TinyPpmReader::ppmPeriod_us(void)
+uint16_t TinyPpmReaderClass::ppmPeriod_us(void)
 {
   uint16_t PpmPeriod_us = 0;
 #if 1
@@ -127,7 +119,7 @@ uint16_t TinyPpmReader::ppmPeriod_us(void)
   return(PpmPeriod_us);
 }
 
-uint8_t TinyPpmReader::isSynchro(uint8_t SynchroClientMsk /*= TINY_PPM_READER_CLIENT(7)*/)
+uint8_t TinyPpmReaderClass::isSynchro(uint8_t SynchroClientMsk /*= TINY_PPM_READER_CLIENT(7)*/)
 {
   uint8_t Ret;
   
@@ -136,61 +128,60 @@ uint8_t TinyPpmReader::isSynchro(uint8_t SynchroClientMsk /*= TINY_PPM_READER_CL
   
   return(Ret);
 }
+
 /* Begin of RcRxPop support */
-uint8_t TinyPpmReader::RcRxPopIsSynchro()
+uint8_t TinyPpmReaderClass::RcRxPopIsSynchro()
 {
   return(isSynchro(TINY_PPM_READER_CLIENT(6)));
 }
 
-uint16_t TinyPpmReader::RcRxPopGetWidth_us(uint8_t Ch)
+uint16_t TinyPpmReaderClass::RcRxPopGetWidth_us(uint8_t Ch)
 {
   return(width_us(Ch));
 }
 /* End of RcRxPop support */
 
-void TinyPpmReader::suspend(void)
+void TinyPpmReaderClass::suspend(void)
 {
   TinyPinChange_DisablePin(_PpmFrameInputPin);
   _ChIdx = (TINY_PPM_READER_CH_MAX + 1);
 }
 
-void TinyPpmReader::resume(void)
+void TinyPpmReaderClass::resume(void)
 {
   _PrevEdgeUs = (uint16_t)(micros() & 0xFFFF);
   TinyPinChange_EnablePin(_PpmFrameInputPin);
 }
 
 /* ISR */
-void TinyPpmReader::rcChannelCollectorIsr(void)
+void TinyPpmReaderClass::rcChannelCollectorIsr(void)
 {
-  TinyPpmReader *PpmReader;
-  uint16_t CurrentEdgeUs, PulseDurationUs;
   static uint8_t Period = false;
+  TinyPpmReaderClass *PpmReader = &TinyPpmReader;
+  uint16_t CurrentEdgeUs, PulseDurationUs;
   
-  for ( PpmReader = first; PpmReader != 0; PpmReader = PpmReader->next )
+  if(TinyPinChange_RisingEdge(PpmReader->_VirtualPort, PpmReader->_PpmFrameInputPin))
   {
-    if(TinyPinChange_FallingEdge(PpmReader->_VirtualPort, PpmReader->_PpmFrameInputPin))
+    CurrentEdgeUs   = (uint16_t)(micros() & 0xFFFF);
+    PulseDurationUs = CurrentEdgeUs - PpmReader->_PrevEdgeUs;
+    PpmReader->_PrevEdgeUs = CurrentEdgeUs;
+    if(PulseDurationUs >= SYNCHRO_TIME_MIN_US)
     {
-      CurrentEdgeUs   = (uint16_t)(micros() & 0xFFFF);
-      PulseDurationUs = (uint16_t)(CurrentEdgeUs - PpmReader->_PrevEdgeUs);
-      PpmReader->_PrevEdgeUs = CurrentEdgeUs;
-      if(PulseDurationUs >= SYNCHRO_TIME_MIN_US)
+      PpmReader->_ChIdxMax = PpmReader->_ChIdx;
+      PpmReader->_ChIdx    = 0;
+      PpmReader->_Synchro  = 0xFF; /* Synchro detected */
+      Period = !Period;
+      if(Period) PpmReader->_StartPpmPeriodUs = CurrentEdgeUs;
+      else       PpmReader->_PpmPeriodUs      = CurrentEdgeUs - PpmReader->_StartPpmPeriodUs;
+    }
+    else
+    {
+      if(PpmReader->_ChIdx < TINY_PPM_READER_CH_MAX)
       {
-	PpmReader->_ChIdxMax = PpmReader->_ChIdx;
-	PpmReader->_ChIdx    = 0;
-	PpmReader->_Synchro  = 0xFF; /* Synchro detected */
-	Period = !Period;
-	if(Period) PpmReader->_StartPpmPeriodUs = CurrentEdgeUs;
-	else       PpmReader->_PpmPeriodUs      = CurrentEdgeUs - PpmReader->_StartPpmPeriodUs;
-      }
-      else
-      {
-	if(PpmReader->_ChIdx < TINY_PPM_READER_CH_MAX)
-	{
-	  PpmReader->_ChWidthUs[PpmReader->_ChIdx] = PulseDurationUs;
-	  PpmReader->_ChIdx++;
-	}
+	PpmReader->_ChWidthUs[PpmReader->_ChIdx] = PulseDurationUs;
+	PpmReader->_ChIdx++;
       }
     }
   }
+
 }
