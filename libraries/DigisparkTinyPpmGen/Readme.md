@@ -3,7 +3,7 @@ TinyPpmGen library
 
 **TinyPpmGen** is an interrupt-driven RC PPM generator library using a 8 bit Timer Output Compare Interrupt. As this library uses hardware resources, the timing is very accurate but the PPM output pin is imposed (cf. _Design Considerations_ below).
 
-This PPM generator can transport up to 8 RC channels and supports positive and negative PPM modulation. The PPM frame period is constant (configurable from 10 to 40ms, default=20 ms) regardless of the channel pulse widths.
+This PPM generator can transport up to 12 RC channels and supports positive and negative PPM modulation. The PPM frame period is constant (configurable from 10 to 40ms, default=20 ms) regardless of the channel pulse widths.
 
 Some examples of use cases:
 -------------------------
@@ -26,7 +26,7 @@ API/methods:
 * **TinyPpmGen.begin(uint8_t _PpmModu_, uint8_t _ChNb_, uint16_t _PpmPeriod_us=20000_)**
 With:
 	* **_PpmModu_**: **TINY_PPM_GEN_POS_MOD** or **TINY_PPM_GEN_NEG_MOD** for respectiveley positive and negative PPM modulation
-	* **_ChNb_**: The number of RC channel to transport in the PPM frame (1 to 8)
+	* **_ChNb_**: The number of RC channel to transport in the PPM frame (1 to 12)
 	* **PpmPeriod_us**: PPM period in µs (from 10000 to 40000 µs, 20000 µs if 3rd argument absent)
  
 * **TinyPpmGen.setChWidth_us(uint8_t _Ch_, uint16_t _Width_us_)**
