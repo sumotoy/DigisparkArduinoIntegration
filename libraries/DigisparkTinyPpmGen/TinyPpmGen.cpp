@@ -28,6 +28,7 @@
    14/02/2015: Timer and Channel choices added
    22/03/2015: Configurable PPM period in us added as optional argument in begin() method (default = 20ms)
    06/04/2015: RcTxPop support added (allows to create a virtual serial port over a PPM channel)
+   09/11/2015: Bug in setChWidth_us() fixed and RAM size optimized (2 bytes per channel saved)
 */
 #include <TinyPpmGen.h>
 
@@ -174,6 +175,11 @@
 #define HALF_OVF_MASK             0x80
 #define HALF_OVF_VAL              128
 
+#define CHANNEL_MAX_NB            12
+
+#define SYNCHRO_MIN_US            3500
+#define CHANNEL_MAX_US            2000
+
 #define PPM_HEADER_US             300
 
 #define PPM_NEUTRAL_US            1500
@@ -212,17 +218,13 @@ typedef struct {
   uint8_t Rem;
 }OneChSt_t;
 
-typedef struct {
-  OneChSt_t Cur;
-  OneChSt_t Next;
-}ChSt_t;
-
 /* Global variables */
-static volatile ChSt_t*   _Ch = NULL;
-static volatile uint8_t   _Synchro = 0;
-static volatile uint8_t   _StartOfFrame = 1;
-static volatile uint8_t   _Idx = 0;
-static volatile uint8_t   _ChMaxNb;
+static volatile OneChSt_t* _Next = NULL;
+static volatile OneChSt_t  _Cur;
+static volatile uint8_t    _Synchro = 0;
+static volatile uint8_t    _StartOfPulse = 1;
+static volatile uint8_t    _Idx = 0;
+static volatile uint8_t    _ChMaxNb;
 
 OneTinyPpmGen TinyPpmGen = OneTinyPpmGen();
 
@@ -238,16 +240,17 @@ uint8_t OneTinyPpmGen::begin(uint8_t PpmModu, uint8_t ChNb, uint16_t PpmPeriod_u
   boolean Ok = false;
   uint8_t Ch;
 
-  _ChMaxNb = (ChNb > 8)?8:ChNb; /* Max is 8 Channels */
-  _Ch = (ChSt_t *)malloc(sizeof(ChSt_t) * (_ChMaxNb + 1)); /* + 1 for Synchro Channel */
-  Ok = (_Ch != NULL);
+  _ChMaxNb = (ChNb > CHANNEL_MAX_NB)?CHANNEL_MAX_NB:ChNb; /* Max is 12 Channels */
+  _Next    = (OneChSt_t *)malloc(sizeof(OneChSt_t) * (_ChMaxNb + 1)); /* + 1 for Synchro Channel */
+  Ok = (_Next != NULL);
   if (Ok)
   {
     _Idx = _ChMaxNb; /* To reload values at startup */
     _PpmPeriod_us = PpmPeriod_us;
-    if(_PpmPeriod_us < PPM_FRAME_MIN_PERIOD_US) _PpmPeriod_us = PPM_FRAME_MIN_PERIOD_US;
-    if(_PpmPeriod_us > PPM_FRAME_MAX_PERIOD_US) _PpmPeriod_us = PPM_FRAME_MAX_PERIOD_US;
-    for(Ch = 1; Ch <= _ChMaxNb; Ch++)
+    if(_PpmPeriod_us < PPM_FRAME_MIN_PERIOD_US)                        _PpmPeriod_us = PPM_FRAME_MIN_PERIOD_US;
+    if(_PpmPeriod_us < ((_ChMaxNb * CHANNEL_MAX_US) + SYNCHRO_MIN_US)) _PpmPeriod_us = (_ChMaxNb * CHANNEL_MAX_US) + SYNCHRO_MIN_US;
+    if(_PpmPeriod_us > PPM_FRAME_MAX_PERIOD_US)                        _PpmPeriod_us = PPM_FRAME_MAX_PERIOD_US;
+    for(Ch = 1; Ch <= _ChMaxNb; Ch++) /* Init all the channels to Neutral */
     {
       setChWidth_us(Ch, PPM_NEUTRAL_US);
     }
@@ -294,8 +297,8 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
       SumTick += PPM_US_TO_TICK(PPM_HEADER_US);
       if(Idx != Ch)
       {
-        SumTick += ((_Ch[Idx].Cur.Ovf & FULL_OVF_MASK) << 8) + _Ch[Idx].Next.Rem;
-        if(_Ch[Idx].Cur.Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
+        SumTick += ((_Next[Idx].Ovf & FULL_OVF_MASK) << 8) + _Next[Idx].Rem;
+        if(_Next[Idx].Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
       }
       else
       {
@@ -313,10 +316,10 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
     }
     /* Update requested Channel AND Synchro to keep constant the period (20ms) */
     PPM_OC_INT_DISABLE();
-    _Ch[0].Next.Ovf = Ch0_Next_Ovf;
-    _Ch[0].Next.Rem = Ch0_Next_Rem;
-    _Ch[Ch].Next.Ovf = Ch_Next_Ovf;
-    _Ch[Ch].Next.Rem = Ch_Next_Rem;
+    _Next[0].Ovf  = Ch0_Next_Ovf;
+    _Next[0].Rem  = Ch0_Next_Rem;
+    _Next[Ch].Ovf = Ch_Next_Ovf;
+    _Next[Ch].Rem = Ch_Next_Rem;
     PPM_OC_INT_ENABLE();
   }
 }
@@ -344,7 +347,7 @@ void OneTinyPpmGen::RcTxPopSetWidth_us(uint16_t Width_us, uint8_t Ch /*= 255*/)
 
 SIGNAL(COMP_VECT)
 {
-  if(_StartOfFrame)
+  if(_StartOfPulse)
   {
      /* Modify PPM_OCR only if Tick > 1 us */
 #if (MS_TIMER_TICK_DURATION_US > 1)
@@ -356,43 +359,37 @@ SIGNAL(COMP_VECT)
     {
       /* End of PPM Frame */
       _Idx = 0;
-      /* Reload new Channel values including Synchro */
-      for(uint8_t Idx = 0; Idx <= _ChMaxNb; Idx++)
-      {
-        _Ch[Idx].Cur.Ovf = _Ch[Idx].Next.Ovf;
-        _Ch[Idx].Cur.Rem = _Ch[Idx].Next.Rem;
-      }
       _Synchro = 0xFF; /* OK: Widths loaded */
     }
     /* Generate Next Channel or Synchro */
-    _Ch[0].Cur.Ovf = _Ch[_Idx].Cur.Ovf;
-    _Ch[0].Cur.Rem = _Ch[_Idx].Cur.Rem;
-    _StartOfFrame = 0;
+    _Cur.Ovf = _Next[_Idx].Ovf;
+    _Cur.Rem = _Next[_Idx].Rem;
+    _StartOfPulse = 0;
   }
   else
   {
     /* Do not change PPM_OCR to have a full Ovf */
-    if(_Ch[0].Cur.Rem)
+    if(_Cur.Rem)
     {
-      PPM_OCR += _Ch[0].Cur.Rem;  /* Remain to generate */
-      _Ch[0].Cur.Rem = 0;
+      PPM_OCR += _Cur.Rem;  /* Remain to generate */
+      _Cur.Rem = 0;
     }
     else
     {
-      if(_Ch[0].Cur.Ovf)
+      if(_Cur.Ovf)
       {
-        if(_Ch[0].Cur.Ovf & HALF_OVF_MASK)
+        if(_Cur.Ovf & HALF_OVF_MASK)
         {
-          _Ch[0].Cur.Ovf &= FULL_OVF_MASK; /* Clear Half ovf indicator */
+          _Cur.Ovf &= FULL_OVF_MASK; /* Clear Half ovf indicator */
           PPM_OCR += HALF_OVF_VAL; /* Half Overflow to generate */
         }
-        _Ch[0].Cur.Ovf--;
+        _Cur.Ovf--;
       }
     }
-    if(!_Ch[0].Cur.Ovf && !_Ch[0].Cur.Rem)
+    if(!_Cur.Ovf && !_Cur.Rem)
     {
       TOGGLE_PPM_PIN_ENABLE();
-      _StartOfFrame = 1;
+      _StartOfPulse = 1;
     }
     else
     {
