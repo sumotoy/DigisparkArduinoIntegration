@@ -16,10 +16,11 @@ Supported Arduinos:
 * **ATtiny167 (Standalone or Digispark pro)**
 * **ATtiny85 (Standalone or Digispark)**
 * **ATmega368P (UNO)**
+* **ATmega32U4 (Arduino Leonardo, Micro and Pro Micro)**
 
 Tip and Tricks:
 --------------
-Develop your project on an arduino UNO, and then shrink it by loading the sketch in an ATtiny or Digispark (pro).
+Develop your project on an arduino UNO, Leonardo, Micro or Pro Micro and then shrink it by loading the sketch in an ATtiny or Digispark (pro).
 
 API/methods:
 -----------
@@ -56,6 +57,10 @@ However, there is some flexibility as the timer and the channel can be chosen by
 	* TIMER(0), CHANNEL(B) -> OC0B -> PD5 -> Pin#5
 	* TIMER(2), CHANNEL(A) -> OC2A -> PB3 -> Pin#11
 	* TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3
+
+* **ATmega32U4** (Arduino Leonardo, Micro and Pro Micro):
+	* TIMER(0), CHANNEL(A) -> OC0A -> PB7 -> Pin#11 (pin not available on connector of Pro Micro)
+	* TIMER(0), CHANNEL(B) -> OC0B -> PD0 -> Pin#3
 
 Contact
 -------
