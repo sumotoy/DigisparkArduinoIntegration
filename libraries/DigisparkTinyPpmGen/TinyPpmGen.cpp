@@ -1,10 +1,10 @@
 /* A tiny interrupt driven RC PPM frame generator library using compare match of a 8 bits timer (timer used for ms in the arduino core can be reused)
    Features:
    - Uses Output Compare Channel A or B of the 8 bit Timer 0, 1 or 2. When used, it disables associated PWM -> Pin marked as "OCxy" shall be used as PPM Frame output (no other choice) 
-   - Can generate a PPM Frame containing up to 8 RC Channels (600 -> 2000 us) or 7 RC Channels (600 -> 2400 us) with default PPM period (20ms), 8 with (higher PPM period)
+   - Can generate a PPM Frame containing up to 12 RC Channels (8 channels 600 -> 2000 us with the 20ms default PPM period), up to 12 channels with higher PPM period.
    - Positive or Negative Modulation supported
    - Constant PPM Frame period: configurable from 10 to 40 ms (default = 20 ms)
-   - No need to wait 20 ms to set the pulse width order for the channels, can be done at any time
+   - No need to wait the PPM Frame period (usually 20 ms) to set the pulse width order for the channels, can be done at any time
    - Synchronisation indicator for digital data transmission over PPM
    - Blocking fonctions such as delay() can be used in the loop() since it's an interrupt driven PPM generator
    - Supported devices: (The user has to define Timer and Channel to use in TinyPpmGen.h file of the library)
@@ -22,12 +22,18 @@
          TIMER(2), CHANNEL(A) -> OC2A -> PB3 -> Pin#11
          TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3
          
-   RC Navy 2015
+       - ATmega32U4 (Arduino Leonardo, Micro and Pro Micro):
+         TIMER(0), CHANNEL(A) -> OC0A -> PB7 -> Pin#11 (/!\ pin not available on connector of Pro Micro /!\)
+         TIMER(0), CHANNEL(B) -> OC0B -> PD0 -> Pin#3
+
+RC Navy 2015
    http://p.loussouarn.free.fr
    31/01/2015: Creation
    14/02/2015: Timer and Channel choices added
    22/03/2015: Configurable PPM period in us added as optional argument in begin() method (default = 20ms)
    06/04/2015: RcTxPop support added (allows to create a virtual serial port over a PPM channel)
+   09/11/2015: Bug in setChWidth_us() fixed and RAM size optimized (2 bytes per channel saved)
+   31/01/2016: Support for ATmega32U4 (Arduino Leonardo, Micro and Pro Micro) added
 */
 #include <TinyPpmGen.h>
 
@@ -146,7 +152,29 @@
   #endif
 #endif
 #else
-#error This target is not supported (yet) by the TinyPpmGn library!!!
+#ifdef __AVR_ATmega32U4__
+#if (OC_TIMER == TIMER(0))
+  #define PPM_WF_REG               CONCAT3(TCCR,  OC_TIMER, A)
+  #define PPM_CS_REG               CONCAT3(TCCR,  OC_TIMER, B)
+  #define PPM_CM_REG               CONCAT3(TCCR,  OC_TIMER, A)
+  #define PPM_FORCE_REG            CONCAT3(TCCR,  OC_TIMER, B)
+  #define TIM_MODE_NORMAL()        (PPM_WF_REG &= ~(_BV(WGM01) | _BV(WGM00)));(PPM_CS_REG = (_BV(CS01) | _BV(CS00)))
+  #define PPM_OC_INT_MSK_REG       TIMSK0
+  #if (OC_CHANNEL == CHANNEL(A))
+    #define PPM_PORT B
+    #define PIN_BIT  7
+#warning CHANNEL(A)
+  #else
+    #define PPM_PORT D
+    #define PIN_BIT  0
+#warning CHANNEL(B)
+  #endif
+#else
+  #error TinyPpmGen SHALL use Timer0 for ATtmega32U4 !!!
+#endif
+#else
+#error This target is not supported (yet) by the TinyPpmGen library!!!
+#endif
 #endif
 #endif
 #endif
@@ -169,10 +197,30 @@
 #define TOGGLE_PPM_PIN_DISABLE()  (PPM_CM_REG &= ~(_BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 1)) | _BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 0))))
 #define TOGGLE_PPM_PIN_ENABLE()   (PPM_CM_REG |=   _BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 0)))
 
+#define INIT_PPM_PIN(PpmModu)     do{\
+                                    if(PpmModu == TINY_PPM_GEN_NEG_MOD)\
+                                    {\
+                                      PPM_OC_PIN |= PPM_OC_PIN_MSK; /* Set pin to high */\
+                                      PPM_CM_REG |= (_BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 1)) | _BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 0)));\
+                                    }\
+                                    else\
+                                    {\
+                                      PPM_OC_PIN &= ~PPM_OC_PIN_MSK; /* Set pin to low */\
+                                      PPM_CM_REG |= (_BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 1)));PPM_CM_REG &= ~(_BV(CONCAT4(COM, OC_TIMER, OC_CHANNEL_LETTER, 0)));\
+                                    delay(1);\
+                                    }\
+                                    PPM_OC_FORCE();\
+TCNT0=0;\
+                                  }while(0)
 
 #define FULL_OVF_MASK             0x7F
 #define HALF_OVF_MASK             0x80
 #define HALF_OVF_VAL              128
+
+#define CHANNEL_MAX_NB            12
+
+#define SYNCHRO_MIN_US            3500
+#define CHANNEL_MAX_US            2000
 
 #define PPM_HEADER_US             300
 
@@ -212,17 +260,13 @@ typedef struct {
   uint8_t Rem;
 }OneChSt_t;
 
-typedef struct {
-  OneChSt_t Cur;
-  OneChSt_t Next;
-}ChSt_t;
-
 /* Global variables */
-static volatile ChSt_t*   _Ch = NULL;
-static volatile uint8_t   _Synchro = 0;
-static volatile uint8_t   _StartOfFrame = 1;
-static volatile uint8_t   _Idx = 0;
-static volatile uint8_t   _ChMaxNb;
+static volatile OneChSt_t* _Next = NULL;
+static volatile OneChSt_t  _Cur;
+static volatile uint8_t    _Synchro = 0;
+static volatile uint8_t    _StartOfPulse = 1;
+static volatile uint8_t    _Idx = 0;
+static volatile uint8_t    _ChMaxNb;
 
 OneTinyPpmGen TinyPpmGen = OneTinyPpmGen();
 
@@ -238,19 +282,22 @@ uint8_t OneTinyPpmGen::begin(uint8_t PpmModu, uint8_t ChNb, uint16_t PpmPeriod_u
   boolean Ok = false;
   uint8_t Ch;
 
-  _ChMaxNb = (ChNb > 8)?8:ChNb; /* Max is 8 Channels */
-  _Ch = (ChSt_t *)malloc(sizeof(ChSt_t) * (_ChMaxNb + 1)); /* + 1 for Synchro Channel */
-  Ok = (_Ch != NULL);
+  _ChMaxNb = (ChNb > CHANNEL_MAX_NB)?CHANNEL_MAX_NB:ChNb; /* Max is 12 Channels */
+  _Next    = (OneChSt_t *)malloc(sizeof(OneChSt_t) * (_ChMaxNb + 1)); /* + 1 for Synchro Channel */
+  Ok = (_Next != NULL);
   if (Ok)
   {
     _Idx = _ChMaxNb; /* To reload values at startup */
     _PpmPeriod_us = PpmPeriod_us;
-    if(_PpmPeriod_us < PPM_FRAME_MIN_PERIOD_US) _PpmPeriod_us = PPM_FRAME_MIN_PERIOD_US;
-    if(_PpmPeriod_us > PPM_FRAME_MAX_PERIOD_US) _PpmPeriod_us = PPM_FRAME_MAX_PERIOD_US;
-    for(Ch = 1; Ch <= _ChMaxNb; Ch++)
+    if(_PpmPeriod_us < PPM_FRAME_MIN_PERIOD_US)                                  _PpmPeriod_us = PPM_FRAME_MIN_PERIOD_US;
+    if(_PpmPeriod_us < ((_ChMaxNb * (uint16_t)CHANNEL_MAX_US) + SYNCHRO_MIN_US)) _PpmPeriod_us = (_ChMaxNb * (uint16_t)CHANNEL_MAX_US) + SYNCHRO_MIN_US;
+    if(_PpmPeriod_us > PPM_FRAME_MAX_PERIOD_US)                                  _PpmPeriod_us = PPM_FRAME_MAX_PERIOD_US;
+    for(Ch = 1; Ch <= _ChMaxNb; Ch++) /* Init all the channels to Neutral */
     {
       setChWidth_us(Ch, PPM_NEUTRAL_US);
     }
+#if 1
+#warning TO DO: fix issue with positive modulation ! (bad signal randomly generated)
     /* Set Pin as Output according to the PPM modulation level */
     PPM_OC_DDR |= PPM_OC_PIN_MSK; /* Set pin as output */
     if(PpmModu == TINY_PPM_GEN_NEG_MOD)
@@ -267,6 +314,12 @@ uint8_t OneTinyPpmGen::begin(uint8_t PpmModu, uint8_t ChNb, uint16_t PpmPeriod_u
       PPM_OC_FORCE(); /* Force Output Compare to initialize properly the output */
     }
     else delay(1);
+#else
+    //test
+    PPM_OC_DDR |= PPM_OC_PIN_MSK; /* Set pin as output */
+    TIM_MODE_NORMAL();
+    INIT_PPM_PIN(PpmModu);
+#endif
     TOGGLE_PPM_PIN_ENABLE();
     PPM_OC_INT_ENABLE();
   }
@@ -294,8 +347,8 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
       SumTick += PPM_US_TO_TICK(PPM_HEADER_US);
       if(Idx != Ch)
       {
-        SumTick += ((_Ch[Idx].Cur.Ovf & FULL_OVF_MASK) << 8) + _Ch[Idx].Next.Rem;
-        if(_Ch[Idx].Cur.Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
+        SumTick += ((_Next[Idx].Ovf & FULL_OVF_MASK) << 8) + _Next[Idx].Rem;
+        if(_Next[Idx].Ovf & HALF_OVF_MASK) SumTick -= HALF_OVF_VAL;
       }
       else
       {
@@ -313,10 +366,10 @@ void OneTinyPpmGen::setChWidth_us(uint8_t Ch, uint16_t Width_us)
     }
     /* Update requested Channel AND Synchro to keep constant the period (20ms) */
     PPM_OC_INT_DISABLE();
-    _Ch[0].Next.Ovf = Ch0_Next_Ovf;
-    _Ch[0].Next.Rem = Ch0_Next_Rem;
-    _Ch[Ch].Next.Ovf = Ch_Next_Ovf;
-    _Ch[Ch].Next.Rem = Ch_Next_Rem;
+    _Next[0].Ovf  = Ch0_Next_Ovf;
+    _Next[0].Rem  = Ch0_Next_Rem;
+    _Next[Ch].Ovf = Ch_Next_Ovf;
+    _Next[Ch].Rem = Ch_Next_Rem;
     PPM_OC_INT_ENABLE();
   }
 }
@@ -344,7 +397,7 @@ void OneTinyPpmGen::RcTxPopSetWidth_us(uint16_t Width_us, uint8_t Ch /*= 255*/)
 
 SIGNAL(COMP_VECT)
 {
-  if(_StartOfFrame)
+  if(_StartOfPulse)
   {
      /* Modify PPM_OCR only if Tick > 1 us */
 #if (MS_TIMER_TICK_DURATION_US > 1)
@@ -356,43 +409,37 @@ SIGNAL(COMP_VECT)
     {
       /* End of PPM Frame */
       _Idx = 0;
-      /* Reload new Channel values including Synchro */
-      for(uint8_t Idx = 0; Idx <= _ChMaxNb; Idx++)
-      {
-        _Ch[Idx].Cur.Ovf = _Ch[Idx].Next.Ovf;
-        _Ch[Idx].Cur.Rem = _Ch[Idx].Next.Rem;
-      }
       _Synchro = 0xFF; /* OK: Widths loaded */
     }
     /* Generate Next Channel or Synchro */
-    _Ch[0].Cur.Ovf = _Ch[_Idx].Cur.Ovf;
-    _Ch[0].Cur.Rem = _Ch[_Idx].Cur.Rem;
-    _StartOfFrame = 0;
+    _Cur.Ovf = _Next[_Idx].Ovf;
+    _Cur.Rem = _Next[_Idx].Rem;
+    _StartOfPulse = 0;
   }
   else
   {
     /* Do not change PPM_OCR to have a full Ovf */
-    if(_Ch[0].Cur.Rem)
+    if(_Cur.Rem)
     {
-      PPM_OCR += _Ch[0].Cur.Rem;  /* Remain to generate */
-      _Ch[0].Cur.Rem = 0;
+      PPM_OCR += _Cur.Rem;  /* Remain to generate */
+      _Cur.Rem = 0;
     }
     else
     {
-      if(_Ch[0].Cur.Ovf)
+      if(_Cur.Ovf)
       {
-        if(_Ch[0].Cur.Ovf & HALF_OVF_MASK)
+        if(_Cur.Ovf & HALF_OVF_MASK)
         {
-          _Ch[0].Cur.Ovf &= FULL_OVF_MASK; /* Clear Half ovf indicator */
+          _Cur.Ovf &= FULL_OVF_MASK; /* Clear Half ovf indicator */
           PPM_OCR += HALF_OVF_VAL; /* Half Overflow to generate */
         }
-        _Ch[0].Cur.Ovf--;
+        _Cur.Ovf--;
       }
     }
-    if(!_Ch[0].Cur.Ovf && !_Ch[0].Cur.Rem)
+    if(!_Cur.Ovf && !_Cur.Rem)
     {
       TOGGLE_PPM_PIN_ENABLE();
-      _StartOfFrame = 1;
+      _StartOfPulse = 1;
     }
     else
     {

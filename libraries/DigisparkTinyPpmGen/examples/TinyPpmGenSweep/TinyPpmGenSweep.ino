@@ -25,6 +25,7 @@ PPM output pin is imposed by hardware and is target dependant:
 This example code is in the public domain.
 */
 #include <TinyPpmGen.h>
+#include <RcTxPop.h>
 
 #define CH_MAX_NB  4
 
@@ -32,13 +33,14 @@ This example code is in the public domain.
 
 #define PULSE_WIDTH_MIN_US    1000
 #define PULSE_WIDTH_MAX_US    2000
+#define PPM_PERIOD_US         20000
 
 uint16_t Width_us = PULSE_WIDTH_MAX_US;
 uint16_t Step_us  = STEP_US;
 
 void setup()
 {
-  TinyPpmGen.begin(TINY_PPM_GEN_POS_MOD, CH_MAX_NB); /* Change TINY_PPM_GEN_POS_MOD to TINY_PPM_GEN_NEG_MOD for NEGative PPM modulation */
+  TinyPpmGen.begin(TINY_PPM_GEN_POS_MOD, CH_MAX_NB, PPM_PERIOD_US); /* Change TINY_PPM_GEN_POS_MOD to TINY_PPM_GEN_NEG_MOD for NEGative PPM modulation */
   TinyPpmGen.setChWidth_us(1, 500);  /* RC Channel#1 */
   TinyPpmGen.setChWidth_us(2, 1000); /* RC Channel#2 */
   TinyPpmGen.setChWidth_us(3, 1500); /* RC Channel#3 */

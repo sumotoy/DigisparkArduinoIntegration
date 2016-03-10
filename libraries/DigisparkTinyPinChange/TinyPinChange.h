@@ -14,6 +14,7 @@
 * 01/02/2015: Fix a bug on TinyPinChange_FallingEdge() method
 * 15/05/2015: Support for ATmega32U4 (Leonardo, micro, pro micro) added
 *             INT0, INT1, INT2, INT3 used as emulated Pin Change Interrupt
+* 15/05/2015: Fix a bug for the emulated Pin Change Interrupt pins (0, 1, 2 and 3) for ATmega32U4 (Leonardo, micro, pro micro)
 */
 
 #if defined(ARDUINO) && ARDUINO >= 100
@@ -106,7 +107,11 @@ void    TinyPinChange_EnablePin(uint8_t Pin);
 void    TinyPinChange_DisablePin(uint8_t Pin);
 uint8_t TinyPinChange_GetPortEvent(uint8_t VirtualPortIdx);
 uint8_t TinyPinChange_GetCurPortSt(uint8_t VirtualPortIdx);
-#define TinyPinChange_PinToMsk(Pin)				_BV(digitalPinToPCMSKbit(Pin))
+#if defined(__AVR_ATmega32U4__)
+#define TinyPinChange_PinToMsk(Pin)				(((Pin) <= 3)?(_BV(digitalPinToInterrupt((Pin)))):(_BV(digitalPinToPCMSKbit((Pin)))))
+#else
+#define TinyPinChange_PinToMsk(Pin)				_BV(digitalPinToPCMSKbit((Pin)))
+#endif
 #define TinyPinChange_Edge(VirtualPortIdx, Pin)		( TinyPinChange_GetPortEvent((VirtualPortIdx)) & TinyPinChange_PinToMsk((Pin)) )
 #define TinyPinChange_RisingEdge(VirtualPortIdx, Pin)		( TinyPinChange_Edge(VirtualPortIdx, Pin) &   TinyPinChange_GetCurPortSt((VirtualPortIdx))  ) 
 #define TinyPinChange_FallingEdge(VirtualPortIdx, Pin)		( TinyPinChange_Edge(VirtualPortIdx, Pin) & (~TinyPinChange_GetCurPortSt((VirtualPortIdx))) )

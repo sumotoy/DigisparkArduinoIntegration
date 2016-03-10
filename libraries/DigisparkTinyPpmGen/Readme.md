@@ -3,7 +3,7 @@ TinyPpmGen library
 
 **TinyPpmGen** is an interrupt-driven RC PPM generator library using a 8 bit Timer Output Compare Interrupt. As this library uses hardware resources, the timing is very accurate but the PPM output pin is imposed (cf. _Design Considerations_ below).
 
-This PPM generator can transport up to 8 RC channels and supports positive and negative PPM modulation. The PPM frame period is constant (configurable from 10 to 40ms, default=20 ms) regardless of the channel pulse widths.
+This PPM generator can transport up to 12 RC channels and supports positive and negative PPM modulation. The PPM frame period is constant (configurable from 10 to 40ms, default=20 ms) regardless of the channel pulse widths.
 
 Some examples of use cases:
 -------------------------
@@ -16,17 +16,18 @@ Supported Arduinos:
 * **ATtiny167 (Standalone or Digispark pro)**
 * **ATtiny85 (Standalone or Digispark)**
 * **ATmega368P (UNO)**
+* **ATmega32U4 (Arduino Leonardo, Micro and Pro Micro)**
 
 Tip and Tricks:
 --------------
-Develop your project on an arduino UNO, and then shrink it by loading the sketch in an ATtiny or Digispark (pro).
+Develop your project on an arduino UNO, Leonardo, Micro or Pro Micro and then shrink it by loading the sketch in an ATtiny or Digispark (pro).
 
 API/methods:
 -----------
 * **TinyPpmGen.begin(uint8_t _PpmModu_, uint8_t _ChNb_, uint16_t _PpmPeriod_us=20000_)**
 With:
 	* **_PpmModu_**: **TINY_PPM_GEN_POS_MOD** or **TINY_PPM_GEN_NEG_MOD** for respectiveley positive and negative PPM modulation
-	* **_ChNb_**: The number of RC channel to transport in the PPM frame (1 to 8)
+	* **_ChNb_**: The number of RC channel to transport in the PPM frame (1 to 12)
 	* **PpmPeriod_us**: PPM period in µs (from 10000 to 40000 µs, 20000 µs if 3rd argument absent)
  
 * **TinyPpmGen.setChWidth_us(uint8_t _Ch_, uint16_t _Width_us_)**
@@ -56,6 +57,10 @@ However, there is some flexibility as the timer and the channel can be chosen by
 	* TIMER(0), CHANNEL(B) -> OC0B -> PD5 -> Pin#5
 	* TIMER(2), CHANNEL(A) -> OC2A -> PB3 -> Pin#11
 	* TIMER(2), CHANNEL(B) -> OC2B -> PD3 -> Pin#3
+
+* **ATmega32U4** (Arduino Leonardo, Micro and Pro Micro):
+	* TIMER(0), CHANNEL(A) -> OC0A -> PB7 -> Pin#11 (pin not available on connector of Pro Micro)
+	* TIMER(0), CHANNEL(B) -> OC0B -> PD0 -> Pin#3
 
 Contact
 -------
